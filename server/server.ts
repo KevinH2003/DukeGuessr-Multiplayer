@@ -10,14 +10,29 @@ import MongoStore from 'connect-mongo'
 import { Issuer, Strategy, generators } from 'openid-client'
 import passport from 'passport'
 import { gitlab } from "./secrets"
+import { setupMongo } from "./mongo"
+import { setupRedis } from "./redis"
+
+declare module 'express-session' {
+  export interface SessionData {
+    credits?: number
+  }
+}
+
+async function main() {
 // set up Mongo
+/*
 const mongoUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017'
 const client = new MongoClient(mongoUrl)
 let db: Db
+*/
 
 // set up Express
 const app = express()
 const server = createServer(app)
+const { getGameState, tryToUpdateGameState } = await setupMongo()
+const { socketIoAdapter: adapter } = await setupRedis()
+const io = new Server(server, { adapter })
 const port = parseInt(process.env.PORT) || 7776
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
@@ -48,12 +63,8 @@ const sessionMiddleware = session({
     ttl: 14 * 24 * 60 * 60 // 14 days
   })
 })
+
 app.use(sessionMiddleware)
-declare module 'express-session' {
-  export interface SessionData {
-    credits?: number
-  }
-}
 
 app.use(passport.initialize())
 app.use(passport.session())
@@ -65,9 +76,6 @@ passport.deserializeUser((user, done) => {
   console.log("deserializeUser", user)
   done(null, user)
 })
-
-// set up Socket.IO
-const io = new Server(server)
 
 // convert a connect middleware to a Socket.IO middleware
 const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next)
@@ -90,44 +98,41 @@ app.get("/api/user", (req, res) => {
   res.json(req.user || {})
 })
 
-client.connect().then(() => {
-    logger.info('connected successfully to MongoDB')
-    db = client.db("DukeGuessrDB")
+Issuer.discover("https://coursework.cs.duke.edu/").then(issuer => {
+  const client = new issuer.Client(gitlab)
+
+  const params = {
+    scope: 'openid profile email',
+    nonce: generators.nonce(),
+    redirect_uri: 'http://127.0.0.1:7775/login-callback',
+    state: generators.state(),
+  }
+
+  function verify(tokenSet: any, userInfo: any, done: (error: any, user: any) => void) {
+    console.log('userInfo', userInfo)
+    console.log('tokenSet', tokenSet)
+    return done(null, userInfo)
+  }
+
+  passport.use('oidc', new Strategy({ client, params }, verify))
+  app.get(
+    "/api/login", 
+    passport.authenticate("oidc", { failureRedirect: "/api/login" }), 
+    (req, res) => res.redirect("/")
+  )
   
-    Issuer.discover("https://coursework.cs.duke.edu/").then(issuer => {
-      const client = new issuer.Client(gitlab)
-    
-      const params = {
-        scope: 'openid profile email',
-        nonce: generators.nonce(),
-        redirect_uri: 'http://127.0.0.1:7775/login-callback',
-        state: generators.state(),
-      }
-    
-      function verify(tokenSet: any, userInfo: any, done: (error: any, user: any) => void) {
-        console.log('userInfo', userInfo)
-        console.log('tokenSet', tokenSet)
-        return done(null, userInfo)
-      }
-    
-      passport.use('oidc', new Strategy({ client, params }, verify))
-  
-      app.get(
-        "/api/login", 
-        passport.authenticate("oidc", { failureRedirect: "/api/login" }), 
-        (req, res) => res.redirect("/")
-      )
-      
-      app.get(
-        "/login-callback",
-        passport.authenticate("oidc", {
-          successRedirect: "/",
-          failureRedirect: "/api/login",
-        })
-      )    
-  
-      // start server
-      server.listen(port)
-      logger.info(`Game server listening on port ${port}`)
+  app.get(
+    "/login-callback",
+    passport.authenticate("oidc", {
+      successRedirect: "/",
+      failureRedirect: "/api/login",
     })
-  })
+  )    
+  // start server
+  server.listen(port)
+  logger.info(`Game server listening on port ${port}`)
+})
+
+}
+
+main()
