@@ -18,7 +18,7 @@ let db: Db
 // set up Express
 const app = express()
 const server = createServer(app)
-const port = parseInt(process.env.PORT) || 7775
+const port = parseInt(process.env.PORT) || 7776
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
@@ -73,6 +73,23 @@ const io = new Server(server)
 const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next)
 io.use(wrap(sessionMiddleware))
 
+//routes
+app.post(
+  "/api/logout", 
+  (req, res, next) => {
+    req.logout((err) => {
+      if (err) {
+        return next(err)
+      }
+      res.redirect("/")
+    })
+  }
+)
+
+app.get("/api/user", (req, res) => {
+  res.json(req.user || {})
+})
+
 client.connect().then(() => {
     logger.info('connected successfully to MongoDB')
     db = client.db("DukeGuessrDB")
@@ -83,7 +100,7 @@ client.connect().then(() => {
       const params = {
         scope: 'openid profile email',
         nonce: generators.nonce(),
-        redirect_uri: 'http://127.0.0.1:8221/login-callback',
+        redirect_uri: 'http://127.0.0.1:7775/login-callback',
         state: generators.state(),
       }
     

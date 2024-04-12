@@ -6,12 +6,12 @@ import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
 
 import App from './App.vue'
-import Game from './views/Game.vue'
+import Home from './views/Home.vue'
 
 const routes = [
   {
     path: "/",
-    component: Game,
+    component: Home,
   }
 ]
 
@@ -21,7 +21,7 @@ const router = createRouter({
 })
 
 createApp(App)
-	.use(BootstrapVue)
-	.use(BootstrapVueIcons)
+	.use(BootstrapVue as any)
+	.use(BootstrapVueIcons as any)
 	.use(router)
 	.mount('#app')
