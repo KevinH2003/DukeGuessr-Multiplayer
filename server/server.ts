@@ -10,7 +10,7 @@ import MongoStore from 'connect-mongo'
 import { Issuer, Strategy, generators } from 'openid-client'
 import passport from 'passport'
 import { gitlab } from "./secrets"
-import { setupMongo } from "./mongo"
+import { setupMongo } from "./gamestate-mongo"
 import { setupRedis } from "./redis"
 
 declare module 'express-session' {
@@ -97,6 +97,8 @@ app.post(
 app.get("/api/user", (req, res) => {
   res.json(req.user || {})
 })
+
+
 
 Issuer.discover("https://coursework.cs.duke.edu/").then(issuer => {
   const client = new issuer.Client(gitlab)

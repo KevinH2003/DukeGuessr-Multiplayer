@@ -1,0 +1,2 @@
+docker run -p 127.0.0.1:27017:27017 -d --rm --name mongo mongo:7.0.5
+docker run -p 127.0.0.1:27775:27775 -d --rm --name dukeguessr mongo:7.0.5

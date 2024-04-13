@@ -11,7 +11,7 @@ export interface MongoGameState extends GameState {
 }
 
 export async function setupMongo() {
-	const mongoClient = new MongoClient(process.env.MONGO_URL || "mongodb://localhost/27017")
+	const mongoClient = new MongoClient(process.env.GAMESTATE_URL || "mongodb://localhost/27017")
 	await mongoClient.connect()
 
 	const db = mongoClient.db(DB)

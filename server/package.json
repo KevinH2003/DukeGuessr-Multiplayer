@@ -31,7 +31,7 @@
   },
   "scripts": {
     "start": "ts-node-dev --respawn server.ts",
-    "setup": "ts-node setupMongo.ts",
+    "setup": "ts-node setup-locations.ts",
     "build": "node build.js"
   }
 }

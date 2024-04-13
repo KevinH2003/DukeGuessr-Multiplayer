@@ -7,11 +7,17 @@ import 'bootstrap-vue/dist/bootstrap-vue.css'
 
 import App from './App.vue'
 import Home from './views/Home.vue'
+import Game from './views/Game.vue'
 
 const routes = [
   {
     path: "/",
     component: Home,
+  },
+  {
+	path: "/game/:gameId",
+	component: Game,
+	props: ({ params: { gameId }}: { params: { gameId: string } }) => ({ gameId })
   }
 ]
 
