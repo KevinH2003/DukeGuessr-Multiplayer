@@ -4,7 +4,6 @@ import express, { NextFunction, Request, Response } from 'express'
 import bodyParser from 'body-parser'
 import pino from 'pino'
 import expressPinoLogger from 'express-pino-logger'
-import { Collection, Db, MongoClient, ObjectId } from 'mongodb'
 import session from 'express-session'
 import MongoStore from 'connect-mongo'
 import { Issuer, Strategy, generators } from 'openid-client'
@@ -24,13 +23,6 @@ declare module 'express-session' {
 
 async function main() {
 const DISABLE_SECURITY = !!process.env.DISABLE_SECURITY
-
-// set up Mongo
-/*
-const mongoUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017'
-const client = new MongoClient(mongoUrl)
-let db: Db
-*/
 
 // set up Express
 const app = express()

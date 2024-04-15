@@ -29,7 +29,7 @@ async function refresh() {
 
 async function newGame() {
     test.value = await (await fetch(
-        "/api/game/000000000000000000000002",
+        "/api/game/" + encodeURIComponent(props.gameId),
         {
             headers: {
                 "Content-Type": "application/json",

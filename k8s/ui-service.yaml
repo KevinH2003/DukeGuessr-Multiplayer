@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ui
+  name: ui
+spec:
+  type: NodePort
+  ports:
+  - name: "ui-service"
+    port: 5775
+    targetPort: 7775
+    nodePort: 31775
+  selector:
+    app: ui
