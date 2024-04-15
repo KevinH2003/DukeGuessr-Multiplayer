@@ -17,7 +17,10 @@ const routes = [
   {
 	path: "/game/:gameId",
 	component: Game,
-	props: ({ params: { gameId }}: { params: { gameId: string } }) => ({ gameId })
+	props: ({ params: { gameId }}: {params: { gameId: string }}) => ({
+		gameId: gameId.padStart(24, '0') // Zero-padding gameId to 24 characters
+	})
+	//props: ({ params: { gameId }}: { params: { gameId: string } }) => ({ gameId })
   }
 ]
 

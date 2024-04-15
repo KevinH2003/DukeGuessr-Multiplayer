@@ -1,9 +1,8 @@
-import { MongoClient, ObjectId } from "mongodb"
-import { GameState, createEmptyGame } from "./model"
+import { MongoClient, ObjectId, InsertOneResult } from "mongodb"
+import { Location, GameSetup, GameState, createEmptyGame} from "./model"
 
-const DB = "game"
+const DB = "DukeGuessrDB"
 const GAMES_COLLECTION = "games"
-const GAME_STATE_ID = new ObjectId("000000000000000000000000")
 
 export interface MongoGameState extends GameState {
 	_id: ObjectId
@@ -11,26 +10,23 @@ export interface MongoGameState extends GameState {
 }
 
 export async function setupMongo() {
-	const mongoClient = new MongoClient(process.env.GAMESTATE_URL || "mongodb://localhost/27017")
+	const mongoClient = new MongoClient(process.env.MONGO_URL || "mongodb://localhost/27017")
 	await mongoClient.connect()
 
 	const db = mongoClient.db(DB)
 	const gamesCollection = db.collection(GAMES_COLLECTION)
-	try {
-		await gamesCollection.insertOne({ _id: GAME_STATE_ID, version: 0, ...createEmptyGame(["player1", "player2"], "west", 2) })
-	} catch (e) {
-		// ignore
-	}
 
 	return {
+		db,
 		gamesCollection,
-		getGameState: async () => {
-			return await gamesCollection.findOne({ _id: GAME_STATE_ID }) as unknown as MongoGameState
+		getGameState: async (gameId: string) => {
+			const _id = ObjectId.createFromHexString(gameId)
+			return await gamesCollection.findOne({ _id: _id }) as unknown as MongoGameState
 		},
 
-		tryToUpdateGameState: async (newGameState: MongoGameState) => {
+		tryToUpdateGameState: async (_id: ObjectId, newGameState: MongoGameState) => {
 			const result = await gamesCollection.replaceOne(
-				{ _id: GAME_STATE_ID, version: newGameState.version },
+				{ _id: _id, version: newGameState.version },
 				{ ...newGameState, version: newGameState.version + 1 },
 			)
 
@@ -41,5 +37,27 @@ export async function setupMongo() {
 				return false
 			}
 		},
+		newGame: async (params: GameSetup, locations: Location[], gameId?: string) => {
+			if (typeof(gameId) == "string"){
+				const _id = ObjectId.createFromHexString(gameId)
+				const existingGame = await gamesCollection.findOne({ _id: _id});
+
+            	if (existingGame) {
+            	    // If the game exists, update it with the new game state
+            	    await gamesCollection.updateOne({ _id: _id }, {
+            	        $set: { version: existingGame.version + 1, ...createEmptyGame(params, locations) }
+            	    });
+            	    return gameId; // Return the _id of the existing game
+            	}
+			}
+
+			let result: InsertOneResult<Document>
+			if (typeof(gameId) == "string"){
+				result = await gamesCollection.insertOne({_id: ObjectId.createFromHexString(gameId), version: 0, ...createEmptyGame(params, locations)})
+			} else {
+				result = await gamesCollection.insertOne({_id: new ObjectId(), version: 0, ...createEmptyGame(params, locations)})
+			}
+			return String(result.insertedId)
+		}
 	}
 }

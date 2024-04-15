@@ -12,6 +12,8 @@ import passport from 'passport'
 import { gitlab } from "./secrets"
 import { setupMongo } from "./gamestate-mongo"
 import { setupRedis } from "./redis"
+import { Location, GameSetup, createEmptyGame } from "./model"
+import { validateRequestBody } from "./utils"
 
 declare module 'express-session' {
   export interface SessionData {
@@ -30,7 +32,7 @@ let db: Db
 // set up Express
 const app = express()
 const server = createServer(app)
-const { getGameState, tryToUpdateGameState } = await setupMongo()
+const { db, gamesCollection, getGameState, tryToUpdateGameState, newGame } = await setupMongo()
 const { socketIoAdapter: adapter } = await setupRedis()
 const io = new Server(server, { adapter })
 const port = parseInt(process.env.PORT) || 7776
@@ -98,7 +100,37 @@ app.get("/api/user", (req, res) => {
   res.json(req.user || {})
 })
 
+app.put("/api/game/:gameId?", async (req, res) => {
+  //If no gameId, will generate a random gameId and return it
+  const requiredAttributes = ['players', 'mode', 'numRounds'];
 
+  // Check if the request body has all the required attributes
+  
+  if (!validateRequestBody(req.body, requiredAttributes)) {
+    return res.status(400).json({ error: req.body })//error: 'Missing required attributes in the request body, ${req.body}' });
+  }
+  
+  const gameParams = req.body
+
+  // Get locations from locations collection
+  const locations: Location[] = await db.collection("locations").aggregate([
+      { $sample: { size: parseInt(gameParams.numRounds) } }
+    ]).toArray() as any as Location[];
+  
+  // Check if not enough locations available
+  if (locations.length < gameParams.numRounds) {
+    console.log("Not enough locations to support ${num_rounds} rounds, setting num_rounds to max number of locations (${locations.length})")
+    gameParams.numRounds = locations.length
+  }
+  
+  const newGameId: string = await newGame(gameParams, locations, req.params.gameId)
+  //res.status(200).json(getGameState(newGameId))
+  res.status(200).json(newGameId)
+})
+
+app.get("/api/game/:gameId", async (req, res) => {
+  res.status(200).json( await getGameState(req.params.gameId))
+})
 
 Issuer.discover("https://coursework.cs.duke.edu/").then(issuer => {
   const client = new issuer.Client(gitlab)

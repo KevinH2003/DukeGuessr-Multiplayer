@@ -2,12 +2,12 @@ import { MongoClient, ObjectId } from 'mongodb'
 import { Location, Coordinates } from './model'
 
 // Connection URL
-const url = 'mongodb://localhost:27775'
+const url = process.env.MONGO_URL || 'mongodb://localhost:27017'
 const client = new MongoClient(url)
 
 const locations: Location[] = [
     {
-        _id: 2,
+        _id: 1,
         imageUrl: 'https://dukeguessrbucket.s3.amazonaws.com/09a847de-8f99-49cf-9181-6f71fea2299c.jpeg',
         eligibleModes: ['all', 'west'],
         coords: {
