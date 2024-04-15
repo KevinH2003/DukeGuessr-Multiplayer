@@ -9,6 +9,7 @@ import session from 'express-session'
 import MongoStore from 'connect-mongo'
 import { Issuer, Strategy, generators } from 'openid-client'
 import passport from 'passport'
+import { Strategy as CustomStrategy } from "passport-custom"
 import { gitlab } from "./secrets"
 import { setupMongo } from "./gamestate-mongo"
 import { setupRedis } from "./redis"
@@ -22,6 +23,8 @@ declare module 'express-session' {
 }
 
 async function main() {
+const DISABLE_SECURITY = !!process.env.DISABLE_SECURITY
+
 // set up Mongo
 /*
 const mongoUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017'
@@ -132,40 +135,44 @@ app.get("/api/game/:gameId", async (req, res) => {
   res.status(200).json( await getGameState(req.params.gameId))
 })
 
-Issuer.discover("https://coursework.cs.duke.edu/").then(issuer => {
-  const client = new issuer.Client(gitlab)
+if (DISABLE_SECURITY) {
+  passport.use("oidc", new CustomStrategy((req, done) => done(null, { preferred_username: req.query.user, roles: req.query.role })))
+} else{
+  Issuer.discover("https://coursework.cs.duke.edu/").then(issuer => {
+    const client = new issuer.Client(gitlab)
 
-  const params = {
-    scope: 'openid profile email',
-    nonce: generators.nonce(),
-    redirect_uri: 'http://127.0.0.1:7775/login-callback',
-    state: generators.state(),
-  }
+    const params = {
+      scope: 'openid profile email',
+      nonce: generators.nonce(),
+      redirect_uri: 'http://127.0.0.1:7775/login-callback',
+      state: generators.state(),
+    }
 
-  function verify(tokenSet: any, userInfo: any, done: (error: any, user: any) => void) {
-    console.log('userInfo', userInfo)
-    console.log('tokenSet', tokenSet)
-    return done(null, userInfo)
-  }
+    function verify(tokenSet: any, userInfo: any, done: (error: any, user: any) => void) {
+      console.log('userInfo', userInfo)
+      console.log('tokenSet', tokenSet)
+      return done(null, userInfo)
+    }
 
-  passport.use('oidc', new Strategy({ client, params }, verify))
-  app.get(
-    "/api/login", 
-    passport.authenticate("oidc", { failureRedirect: "/api/login" }), 
-    (req, res) => res.redirect("/")
-  )
-  
-  app.get(
-    "/login-callback",
-    passport.authenticate("oidc", {
-      successRedirect: "/",
-      failureRedirect: "/api/login",
-    })
-  )    
-  // start server
-  server.listen(port)
-  logger.info(`Game server listening on port ${port}`)
-})
+    passport.use('oidc', new Strategy({ client, params }, verify))
+    app.get(
+      "/api/login", 
+      passport.authenticate("oidc", { failureRedirect: "/api/login" }), 
+      (req, res) => res.redirect("/")
+    )
+
+    app.get(
+      "/login-callback",
+      passport.authenticate("oidc", {
+        successRedirect: "/",
+        failureRedirect: "/api/login",
+      })
+    )    
+    // start server
+    server.listen(port)
+    logger.info(`Game server listening on port ${port}`)
+  })  
+}
 
 }
 
