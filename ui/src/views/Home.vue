@@ -5,8 +5,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed, Ref, ComputedRef } from 'vue'
-import {GameSetup, GameState} from '../../../server/model'
+//import { onMounted, ref, computed, Ref, ComputedRef } from 'vue'
+import {Ref, ref} from 'vue'
+//import {GameSetup, GameState} from '../../../server/model'
 
 const test: Ref<string> = ref("10")
 

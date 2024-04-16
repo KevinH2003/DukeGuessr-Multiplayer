@@ -2,12 +2,14 @@
     <div>Game!</div>
     <div>{{ gameId }}</div>
     <div>{{ test }}</div>
+    <div>{{ gameState }}</div>
     <b-button @click="newGame"></b-button>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed, Ref, ComputedRef } from 'vue'
-import {GameState} from '../../../server/model'
+//import { onMounted, ref, computed, Ref, ComputedRef } from 'vue'
+import {ref, Ref} from 'vue'
+import {GameState} from '../model'
 
 interface Props {
   gameId: string
@@ -21,12 +23,13 @@ const props = withDefaults(defineProps<Props>(), {
 const gameState: Ref<GameState | null> = ref(null)
 const test: Ref<string> = ref("10")
 
+/*
 async function refresh() {
     gameState.value = await (await fetch(
         "/api/game/" + encodeURIComponent(props.gameId)
     )).json()
 }
-
+*/
 async function newGame() {
     test.value = await (await fetch(
         "/api/game/" + encodeURIComponent(props.gameId),
