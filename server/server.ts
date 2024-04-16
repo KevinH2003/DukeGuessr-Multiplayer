@@ -22,7 +22,14 @@ declare module 'express-session' {
 }
 
 async function main() {
-const DISABLE_SECURITY = !!process.env.DISABLE_SECURITY
+const HOST = process.env.HOST || "127.0.0.1"
+const SERVER_PORT = process.env.SERVER_PORT || 7776
+const DISABLE_SECURITY = process.env.DISABLE_SECURITY || ""
+
+const passportStrategies = [
+  ...(DISABLE_SECURITY ? ["disable-security"] : []),
+  "oidc",
+]
 
 // set up Express
 const app = express()
@@ -30,7 +37,7 @@ const server = createServer(app)
 const { db, gamesCollection, getGameState, tryToUpdateGameState, newGame } = await setupMongo()
 const { socketIoAdapter: adapter } = await setupRedis()
 const io = new Server(server, { adapter })
-const port = parseInt(process.env.PORT) || 7776
+const port = parseInt(process.env.SERVER_PORT) || 7776
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
@@ -127,44 +134,49 @@ app.get("/api/game/:gameId", async (req, res) => {
   res.status(200).json( await getGameState(req.params.gameId))
 })
 
-if (DISABLE_SECURITY) {
-  passport.use("oidc", new CustomStrategy((req, done) => done(null, { preferred_username: req.query.user, roles: req.query.role })))
-} else{
-  Issuer.discover("https://coursework.cs.duke.edu/").then(issuer => {
-    const client = new issuer.Client(gitlab)
+passport.use("disable-security", new CustomStrategy((req, done) => {
+  if (req.query.key !== DISABLE_SECURITY) {
+    console.log("you must supply ?key=" + DISABLE_SECURITY + " to log in via DISABLE_SECURITY")
+    done(null, false)
+  } else {
+    done(null, { preferred_username: req.query.user })
+  }
+}))
 
-    const params = {
-      scope: 'openid profile email',
-      nonce: generators.nonce(),
-      redirect_uri: 'http://127.0.0.1:7775/login-callback',
-      state: generators.state(),
-    }
 
-    function verify(tokenSet: any, userInfo: any, done: (error: any, user: any) => void) {
-      console.log('userInfo', userInfo)
-      console.log('tokenSet', tokenSet)
-      return done(null, userInfo)
-    }
+Issuer.discover("https://coursework.cs.duke.edu/").then(issuer => {
+  const client = new issuer.Client(gitlab)
+  const params = {
+    scope: 'openid profile email',
+    nonce: generators.nonce(),
+    redirect_uri: "http://localhost:7775/login-callback", //`http://${HOST}:${SERVER_PORT}/login-callback`,
+    state: generators.state(),
+  }
 
-    passport.use('oidc', new Strategy({ client, params }, verify))
-    app.get(
-      "/api/login", 
-      passport.authenticate("oidc", { failureRedirect: "/api/login" }), 
-      (req, res) => res.redirect("/")
-    )
+  function verify(tokenSet: any, userInfo: any, done: (error: any, user: any) => void) {
+    console.log('userInfo', userInfo)
+    console.log('tokenSet', tokenSet)
+    return done(null, userInfo)
+  }
 
-    app.get(
-      "/login-callback",
-      passport.authenticate("oidc", {
-        successRedirect: "/",
-        failureRedirect: "/api/login",
-      })
-    )    
-    // start server
-    server.listen(port)
-    logger.info(`Game server listening on port ${port}`)
-  })  
-}
+  passport.use('oidc', new Strategy({ client, params }, verify))
+  app.get(
+    "/api/login", 
+    passport.authenticate("oidc", { failureRedirect: "/api/login" }), 
+    (req, res) => res.redirect("/")
+  )
+
+  app.get(
+    "/login-callback",
+    passport.authenticate("oidc", {
+      successRedirect: "/",
+      failureRedirect: "/api/login",
+    })
+  )    
+})  
+
+server.listen(port)
+logger.info(`Game server listening on port ${port}`)
 
 }
 

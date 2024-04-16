@@ -1,7 +1,8 @@
-# redis-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    app: redis
   name: redis
 spec:
   replicas: 1
@@ -19,4 +20,3 @@ spec:
         ports:
         - containerPort: 6379
           name: redis
-        # Add additional configuration/environment variables as needed

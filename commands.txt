@@ -44,3 +44,10 @@ In another terminal:
 cd server
 npm run setup
 ```
+
+kubectl port-forward service/db 27017:27017 & pid=$! ; echo "hi" ; kill $pid
+
+http://localhost:7776/login-callback
+http://127.0.0.1:7776/login-callback
+http://localhost:7775/login-callback
+http://127.0.0.1:7775/login-callback

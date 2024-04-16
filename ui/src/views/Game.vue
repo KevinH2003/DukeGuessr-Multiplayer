@@ -10,15 +10,17 @@
 //import { onMounted, ref, computed, Ref, ComputedRef } from 'vue'
 import {ref, Ref} from 'vue'
 import {GameState} from '../model'
+//import { io } from 'socket.io-client'
 
 interface Props {
   gameId: string
 }
-
 // default values for props
 const props = withDefaults(defineProps<Props>(), {
   gameId: "",
 })
+
+//const socket = io({ transports: ["websocket"] })
 
 const gameState: Ref<GameState | null> = ref(null)
 const test: Ref<string> = ref("10")

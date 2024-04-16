@@ -26,5 +26,5 @@ spec:
           value: mongodb://db
         - name: REDIS_URL
           value: redis://redis
-        - name: PORT
-          value: 7776
+        - name: SERVER_PORT
+          value: "7776"

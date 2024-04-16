@@ -1,13 +1,14 @@
-# redis-service.yaml
 apiVersion: v1
 kind: Service
 metadata:
+  labels:
+    app: redis
   name: redis
 spec:
-  selector:
-    app: redis
+  type: ClusterIP
   ports:
-    - protocol: TCP
+    - name: "redis-service"
       port: 6379
       targetPort: 6379
-  # You can specify the service type here (ClusterIP, NodePort, LoadBalancer)
+  selector:
+    app: redis
