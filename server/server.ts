@@ -31,6 +31,7 @@ const passportStrategies = [
   "oidc",
 ]
 
+
 // set up Express
 const app = express()
 const server = createServer(app)
@@ -143,13 +144,13 @@ passport.use("disable-security", new CustomStrategy((req, done) => {
   }
 }))
 
-
 Issuer.discover("https://coursework.cs.duke.edu/").then(issuer => {
   const client = new issuer.Client(gitlab)
   const params = {
     scope: 'openid profile email',
     nonce: generators.nonce(),
-    redirect_uri: "http://localhost:7775/login-callback", //`http://${HOST}:${SERVER_PORT}/login-callback`,
+    redirect_uri: "http://localhost:7775/login-callback", 
+    //redirect_uri: `http://${HOST}:${SERVER_PORT}/login-callback`,
     state: generators.state(),
   }
 

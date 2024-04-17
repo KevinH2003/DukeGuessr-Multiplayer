@@ -1,4 +1,5 @@
 docker run -p 127.0.0.1:27017:27017 -d --rm --name mongo mongo:7.0.5
+docker run --rm -d --name redis -p 6379:6379 redis
 
 **NOTE**: Kubernetes does *not* build Docker images for you. Before deploying for the first time, or if you make any changes to your code, you *must* (re-)run the commands below to regenerate the images, and then re-deploy to Kubernetes.
 
