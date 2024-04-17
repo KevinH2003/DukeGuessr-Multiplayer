@@ -41,7 +41,6 @@ export interface Location extends StrippedLocation {
 }
 
 export interface GameSetup {
-    players: Player[]
     mode: Mode
     numRounds: number
     numPlayers?: number
@@ -49,6 +48,7 @@ export interface GameSetup {
 }
 
 export interface GameState extends GameSetup{
+    players: Player[]
     locations: Location[]
     round: number
     playerScores: PlayerScores
@@ -76,18 +76,18 @@ export function determineWinner(state: GameState): Player {
 
 export function createEmptyGame(params: GameSetup, locations: Location[]): GameState {
     const emptyGame: GameState = {
-        players: params.players,
+        players: [],
         mode: params.mode,
         locations: locations,
         numRounds: params.numRounds,
-        numPlayers: params?.numPlayers || params.players?.length,
-        roundLength: params?.roundLength || 0, // Default to 0 if roundLength is not provided
+        numPlayers: params?.numPlayers || -1,
+        roundLength: params?.roundLength || -1, 
         round: 0,
-        playerScores: {}, // Initialize player scores with zeros
-        playerGuesses: {}, // Initialize player guesses with nulls
+        playerScores: {}, 
+        playerGuesses: {}, 
         phase: "guessing", // Initial phase is guessing
-        roundStart: 0, // Initialize round start time
-        currTime: 0 // Initialize current time
+        roundStart: 0, 
+        currTime: 0,
     }
     return emptyGame
 }

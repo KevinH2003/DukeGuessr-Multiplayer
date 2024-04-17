@@ -21,7 +21,7 @@ export async function setupMongo() {
 		gamesCollection,
 		getGameState: async (gameId: string) => {
 			const _id = ObjectId.createFromHexString(gameId)
-			return await gamesCollection.findOne({ _id: _id }) as unknown as MongoGameState
+			return await gamesCollection.findOne({ _id: _id }) as unknown as MongoGameState | null
 		},
 
 		tryToUpdateGameState: async (gameId: string, newGameState: MongoGameState) => {
@@ -38,7 +38,18 @@ export async function setupMongo() {
 				return false
 			}
 		},
-		newGame: async (params: GameSetup, locations: Location[], gameId?: string) => {
+		newGame: async (params: GameSetup, gameId?: string) => {
+			// Get locations from locations collection
+			const locations: Location[] = await db.collection("locations").aggregate([
+				{ $sample: { size: params.numRounds } }
+				]).toArray() as any as Location[];
+		  
+			// Check if not enough locations available
+			if (locations.length < params.numRounds) {
+			  	console.log("Not enough locations to support ${num_rounds} rounds, setting num_rounds to max number of locations (${locations.length})")
+			  	params.numRounds = locations.length
+			}
+
 			if (typeof(gameId) == "string"){
 				const _id = ObjectId.createFromHexString(gameId)
 				const existingGame = await gamesCollection.findOne({ _id: _id});

@@ -77,11 +77,13 @@ const username: ComputedRef<string | undefined> = computed(() => user?.value.pre
 
 const socket = io({ transports: ["websocket"] })
 
+console.log("Username:", JSON.stringify(username.value))
+socket.emit("username", username)
+
 console.log("Game:", JSON.stringify(props.gameId))
 socket.emit("game-id", props.gameId)
 
-console.log("Username:", JSON.stringify(username.value))
-socket.emit("username", username)
+
 
 const gameState: Ref<GameState | null> = ref(null)
 const test: Ref<string> = ref("10")
@@ -107,7 +109,6 @@ async function newGame() {
             },
             method: "PUT",
             body: JSON.stringify({
-                players: ["p1", "p2"],
                 mode: "west",
                 numRounds: 5,
             })

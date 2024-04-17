@@ -34,6 +34,11 @@ const passportStrategies = [
   "oidc",
 ]
 
+const defaultGameSetup: GameSetup = {
+  mode: "west",
+  numRounds: 5,
+}
+
 
 // set up Express
 const app = express()
@@ -116,14 +121,14 @@ app.post(
 
 
 passport.use("disable-security", new CustomStrategy((req, done) => {
-  logger.info("trying to disable security...\n\n\n\n\n\n\n\n\n")
+  logger.info("trying to disable security...")
   if (req.query.key !== DISABLE_SECURITY) {
-    logger.info("disable security failed\n\n\n\n\n")
+    logger.info("disable security failed")
     console.log("you must supply ?key=" + DISABLE_SECURITY + " to log in via DISABLE_SECURITY")
     done(null, false)
   } else {
     //done(null, { name: req.query.name, preferred_username: req.query.preferred_username, roles: [].concat(req.query.role) })
-    logger.info("disable security succeeded\n\n\n\n\n")
+    logger.info("disable security succeeded")
     done(null, { name: req.query.name, preferred_username: req.query.preferred_username })
   }
 }))
@@ -167,35 +172,35 @@ io.on('connection', client => {
 
   console.log("New client")
 
-  let gameId: string | null = null
   let username: string | null = null
+  let gameId: string | null = null
 
-  client.on("game-id", (id: string) => {
-    gameId = id
-    console.log("Game ID Set: ", gameId)
-    client.join(gameId)
-  })
   client.on("username", (name: string) => {
     username = name
     console.log("Username Set: ", username)
     client.join(username)
   })
 
-  client.on("guess", async (guess: Guess) => {
-    const state = await getGameState(gameId)
-    state.playerGuesses[username] = guess
-    if (tryToUpdateGameState(gameId, {...state})){
-      emitGameState(gameId)
-    } else{
-      //Error handling
+  client.on("game-id", async (id: string) => {
+    gameId = id
+    console.log("Game ID Set: ", gameId)
+    client.join(gameId)
+    const game = await getGameState(gameId)
+    
+    if (!game){
+      await newGame(defaultGameSetup, )
     }
-
   })
 
   client.on("guess", async (guess: Guess) => {
     const state = await getGameState(gameId)
     state.playerGuesses[username] = guess
-    tryToUpdateGameState(gameId, {...state})
+    if (await tryToUpdateGameState(gameId, {...state})){
+      emitGameState(gameId)
+    } else{
+      //Error handling
+    }
+
   })
 
 })
@@ -207,7 +212,7 @@ app.get("/api/user", (req, res) => {
 
 app.put("/api/game/:gameId?", checkAuthenticated, async (req, res) => {
   //If no gameId, will generate a random gameId and return it
-  const requiredAttributes = ['players', 'mode', 'numRounds'];
+  const requiredAttributes = ['mode', 'numRounds']
 
   // Check if the request body has all the required attributes
   
@@ -216,19 +221,8 @@ app.put("/api/game/:gameId?", checkAuthenticated, async (req, res) => {
   }
   
   const gameParams = req.body
-
-  // Get locations from locations collection
-  const locations: Location[] = await db.collection("locations").aggregate([
-      { $sample: { size: parseInt(gameParams.numRounds) } }
-    ]).toArray() as any as Location[];
   
-  // Check if not enough locations available
-  if (locations.length < gameParams.numRounds) {
-    console.log("Not enough locations to support ${num_rounds} rounds, setting num_rounds to max number of locations (${locations.length})")
-    gameParams.numRounds = locations.length
-  }
-  
-  const newGameId: string = await newGame(gameParams, locations, req.params.gameId)
+  const newGameId: string = await newGame(gameParams, req.params.gameId)
   //res.status(200).json(getGameState(newGameId))
   res.status(200).json(newGameId)
 })
