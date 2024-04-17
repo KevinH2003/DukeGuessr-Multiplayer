@@ -39,7 +39,6 @@ const server = createServer(app)
 const { db, gamesCollection, getGameState, tryToUpdateGameState, newGame } = await setupMongo()
 const { socketIoAdapter: adapter } = await setupRedis()
 const io = new Server(server, { adapter })
-const port = parseInt(process.env.SERVER_PORT) || 7776
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
@@ -187,8 +186,8 @@ passport.use("disable-security", new CustomStrategy((req, done) => {
   passport.use('oidc', new Strategy({ client, params }, verify))
 }
 
-app.listen(port, () => {
-  console.log(`DukeGuessr listening on port: ${port}`)
+app.listen(SERVER_PORT, () => {
+  console.log(`DukeGuessr listening on port: ${SERVER_PORT}`)
 })
 }
 

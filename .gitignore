@@ -2,3 +2,5 @@ node_modules
 secrets.ts
 actions-runner
 .env
+db_forward.pid
+redis_forward.pid

@@ -40,7 +40,7 @@ kubectl port-forward service/db 27017:27017 & echo $! > db_forward.pid
 kubectl port-forward service/redis 6379:6379 & echo $! > redis_forward.pid
 
 # Wait for a moment to ensure port-forwarding is established
-sleep 5
+sleep 2
 
 echo "Setting up DB..."
 cd server
