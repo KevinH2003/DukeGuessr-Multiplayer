@@ -24,14 +24,14 @@ export default defineConfig({
 		port: 7775,
 		proxy: {
 			"^/socket.io": {
-				target: "http://127.0.0.1:7776",
+				target: "http://localhost:7776",
         ws: true
 			},
       "^/login-callback": {
-				target: "http://127.0.0.1:7776",
+				target: "http://localhost:7776",
 			},
       "^/api": {
-				target: "http://127.0.0.1:7776",
+				target: "http://localhost:7776",
 			},
     }
 	},
