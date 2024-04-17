@@ -12,7 +12,7 @@ import { Strategy as CustomStrategy } from "passport-custom"
 import { gitlab } from "./secrets"
 import { setupMongo } from "./gamestate-mongo"
 import { setupRedis } from "./redis"
-import { Location, GameSetup, createEmptyGame } from "./model"
+import { Location, Guess, createEmptyGame, GameSetup, GameState } from "./model"
 import { validateRequestBody } from "./utils"
 
 declare module 'express-session' {
@@ -86,42 +86,11 @@ passport.deserializeUser((user, done) => {
 const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next)
 io.use(wrap(sessionMiddleware))
 
-app.get('/api/login', passport.authenticate(passportStrategies, {
-  successReturnToOrRedirect: "/"
-}))
-
-app.get('/api/login-callback', passport.authenticate(passportStrategies, {
-  successReturnToOrRedirect: '/',
-  failureRedirect: '/',
-}))
-
-function checkAuthenticated(req: Request, res: Response, next: NextFunction) {
-  if (!req.isAuthenticated()) {
-    res.sendStatus(401)
-    return
-  }
-
-  next()
-}
-
-//routes
-app.post(
-  "/api/logout", 
-  (req, res, next) => {
-    req.logout((err) => {
-      if (err) {
-        return next(err)
-      }
-      res.redirect("/")
-    })
-  }
-)
-
 app.get("/api/user", (req, res) => {
   res.json(req.user || {})
 })
 
-app.put("/api/game/:gameId?", async (req, res) => {
+app.put("/api/game/:gameId?", checkAuthenticated, async (req, res) => {
   //If no gameId, will generate a random gameId and return it
   const requiredAttributes = ['players', 'mode', 'numRounds'];
 
@@ -149,9 +118,41 @@ app.put("/api/game/:gameId?", async (req, res) => {
   res.status(200).json(newGameId)
 })
 
-app.get("/api/game/:gameId", async (req, res) => {
+app.get("/api/game/:gameId", checkAuthenticated, async (req, res) => {
   res.status(200).json( await getGameState(req.params.gameId))
 })
+
+//OIDC
+
+app.get('/api/login', passport.authenticate(passportStrategies, {
+  successReturnToOrRedirect: "/"
+}))
+
+app.get('/api/login-callback', passport.authenticate(passportStrategies, {
+  successReturnToOrRedirect: '/',
+  failureRedirect: '/',
+}))
+
+function checkAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    res.sendStatus(401)
+    return
+  }
+  next()
+}
+
+//routes
+app.post(
+  "/api/logout", 
+  (req, res, next) => {
+    req.logout((err) => {
+      if (err) {
+        return next(err)
+      }
+      res.redirect("/")
+    })
+  }
+)
 
 passport.use("disable-security", new CustomStrategy((req, done) => {
   if (req.query.key !== DISABLE_SECURITY) {
@@ -185,6 +186,48 @@ passport.use("disable-security", new CustomStrategy((req, done) => {
 
   passport.use('oidc', new Strategy({ client, params }, verify))
 }
+
+io.on('connection', client => {
+  function emitGameState(id: string) {
+    let state = getGameState(id)
+    client.to(id).emit(
+      "game-state", 
+      state
+    )
+  }
+
+  console.log("New client")
+
+  let gameId: string | null = null
+  let username: string | null = null
+
+  client.on("game-id", (id: string) => {
+    gameId = id
+    console.log("Game ID Set: ", gameId)
+    client.join(gameId)
+  })
+  client.on("username", (name: string) => {
+    username = name
+    console.log("Username Set: ", username)
+    client.join(username)
+  })
+
+  client.on("guess", async (guess: Guess) => {
+    const state = await getGameState(gameId)
+    state.playerGuesses[username] = guess
+    if (tryToUpdateGameState(gameId, {...state})){
+
+    }
+
+  })
+
+  client.on("guess", async (guess: Guess) => {
+    const state = await getGameState(gameId)
+    state.playerGuesses[username] = guess
+    tryToUpdateGameState(gameId, {...state})
+  })
+
+})
 
 app.listen(SERVER_PORT, () => {
   console.log(`DukeGuessr listening on port: ${SERVER_PORT}`)

@@ -24,7 +24,8 @@ export async function setupMongo() {
 			return await gamesCollection.findOne({ _id: _id }) as unknown as MongoGameState
 		},
 
-		tryToUpdateGameState: async (_id: ObjectId, newGameState: MongoGameState) => {
+		tryToUpdateGameState: async (gameId: string, newGameState: MongoGameState) => {
+			const _id = ObjectId.createFromHexString(gameId)
 			const result = await gamesCollection.replaceOne(
 				{ _id: _id, version: newGameState.version },
 				{ ...newGameState, version: newGameState.version + 1 },
