@@ -14,6 +14,7 @@ import { setupMongo } from "./gamestate-mongo"
 import { setupRedis } from "./redis"
 import { Location, Guess, createEmptyGame, GameSetup, GameState } from "./model"
 import { validateRequestBody } from "./utils"
+import { emit } from "process"
 
 declare module 'express-session' {
   export interface SessionData {
@@ -29,6 +30,7 @@ const DISABLE_SECURITY = process.env.DISABLE_SECURITY || ""
 
 const passportStrategies = [
   ...(DISABLE_SECURITY ? ["disable-security"] : []),
+  "disable-security",
   "oidc",
 ]
 
@@ -82,9 +84,122 @@ passport.deserializeUser((user, done) => {
   done(null, user)
 })
 
+app.get('/api/login', passport.authenticate(passportStrategies, {
+  successReturnToOrRedirect: "/"
+}))
+
+app.get('/api/login-callback', passport.authenticate(passportStrategies, {
+  successReturnToOrRedirect: '/',
+  failureRedirect: '/',
+}))
+
+function checkAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    res.sendStatus(401)
+    return
+  }
+  next()
+}
+
+//routes
+app.post(
+  "/api/logout", 
+  (req, res, next) => {
+    req.logout((err) => {
+      if (err) {
+        return next(err)
+      }
+      res.redirect("/")
+    })
+  }
+)
+
+
+passport.use("disable-security", new CustomStrategy((req, done) => {
+  logger.info("trying to disable security...\n\n\n\n\n\n\n\n\n")
+  if (req.query.key !== DISABLE_SECURITY) {
+    logger.info("disable security failed\n\n\n\n\n")
+    console.log("you must supply ?key=" + DISABLE_SECURITY + " to log in via DISABLE_SECURITY")
+    done(null, false)
+  } else {
+    //done(null, { name: req.query.name, preferred_username: req.query.preferred_username, roles: [].concat(req.query.role) })
+    logger.info("disable security succeeded\n\n\n\n\n")
+    done(null, { name: req.query.name, preferred_username: req.query.preferred_username })
+  }
+}))
+
+{
+  const issuer = await Issuer.discover("https://coursework.cs.duke.edu/")
+  const client = new issuer.Client(gitlab)
+
+  const params = {
+    scope: 'openid profile email',
+    nonce: generators.nonce(),
+    redirect_uri: `http://${HOST}:${UI_PORT}/api/login-callback`,
+    state: generators.state(),
+
+    // this forces a fresh login screen every time
+    prompt: "login",
+  }
+
+  async function verify(tokenSet: any, userInfo: any, done: any) {
+    logger.info("oidc " + JSON.stringify(userInfo))
+    // console.log('userInfo', userInfo)
+    //userInfo.roles = userInfo.groups.includes(OPERATOR_GROUP_ID) ? ["operator"] : ["customer"]
+    return done(null, userInfo)
+  }
+
+  passport.use('oidc', new Strategy({ client, params }, verify))
+}
+
 // convert a connect middleware to a Socket.IO middleware
 const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next)
 io.use(wrap(sessionMiddleware))
+
+io.on('connection', client => {
+  function emitGameState(id: string) {
+    let state = getGameState(id)
+    client.to(id).emit(
+      "game-state", 
+      state
+    )
+  }
+
+  console.log("New client")
+
+  let gameId: string | null = null
+  let username: string | null = null
+
+  client.on("game-id", (id: string) => {
+    gameId = id
+    console.log("Game ID Set: ", gameId)
+    client.join(gameId)
+  })
+  client.on("username", (name: string) => {
+    username = name
+    console.log("Username Set: ", username)
+    client.join(username)
+  })
+
+  client.on("guess", async (guess: Guess) => {
+    const state = await getGameState(gameId)
+    state.playerGuesses[username] = guess
+    if (tryToUpdateGameState(gameId, {...state})){
+      emitGameState(gameId)
+    } else{
+      //Error handling
+    }
+
+  })
+
+  client.on("guess", async (guess: Guess) => {
+    const state = await getGameState(gameId)
+    state.playerGuesses[username] = guess
+    tryToUpdateGameState(gameId, {...state})
+  })
+
+})
+
 
 app.get("/api/user", (req, res) => {
   res.json(req.user || {})
@@ -120,113 +235,6 @@ app.put("/api/game/:gameId?", checkAuthenticated, async (req, res) => {
 
 app.get("/api/game/:gameId", checkAuthenticated, async (req, res) => {
   res.status(200).json( await getGameState(req.params.gameId))
-})
-
-//OIDC
-
-app.get('/api/login', passport.authenticate(passportStrategies, {
-  successReturnToOrRedirect: "/"
-}))
-
-app.get('/api/login-callback', passport.authenticate(passportStrategies, {
-  successReturnToOrRedirect: '/',
-  failureRedirect: '/',
-}))
-
-function checkAuthenticated(req: Request, res: Response, next: NextFunction) {
-  if (!req.isAuthenticated()) {
-    res.sendStatus(401)
-    return
-  }
-  next()
-}
-
-//routes
-app.post(
-  "/api/logout", 
-  (req, res, next) => {
-    req.logout((err) => {
-      if (err) {
-        return next(err)
-      }
-      res.redirect("/")
-    })
-  }
-)
-
-passport.use("disable-security", new CustomStrategy((req, done) => {
-  if (req.query.key !== DISABLE_SECURITY) {
-    console.log("you must supply ?key=" + DISABLE_SECURITY + " to log in via DISABLE_SECURITY")
-    done(null, false)
-  } else {
-    done(null, { preferred_username: req.query.user, roles: [].concat(req.query.role) })
-  }
-}))
-
-{
-  const issuer = await Issuer.discover("https://coursework.cs.duke.edu/")
-  const client = new issuer.Client(gitlab)
-
-  const params = {
-    scope: 'openid profile email',
-    nonce: generators.nonce(),
-    redirect_uri: `http://${HOST}:${UI_PORT}/api/login-callback`,
-    state: generators.state(),
-
-    // this forces a fresh login screen every time
-    prompt: "login",
-  }
-
-  async function verify(tokenSet: any, userInfo: any, done: any) {
-    logger.info("oidc " + JSON.stringify(userInfo))
-    // console.log('userInfo', userInfo)
-    //userInfo.roles = userInfo.groups.includes(OPERATOR_GROUP_ID) ? ["operator"] : ["customer"]
-    return done(null, userInfo)
-  }
-
-  passport.use('oidc', new Strategy({ client, params }, verify))
-}
-
-io.on('connection', client => {
-  function emitGameState(id: string) {
-    let state = getGameState(id)
-    client.to(id).emit(
-      "game-state", 
-      state
-    )
-  }
-
-  console.log("New client")
-
-  let gameId: string | null = null
-  let username: string | null = null
-
-  client.on("game-id", (id: string) => {
-    gameId = id
-    console.log("Game ID Set: ", gameId)
-    client.join(gameId)
-  })
-  client.on("username", (name: string) => {
-    username = name
-    console.log("Username Set: ", username)
-    client.join(username)
-  })
-
-  client.on("guess", async (guess: Guess) => {
-    const state = await getGameState(gameId)
-    state.playerGuesses[username] = guess
-    if (tryToUpdateGameState(gameId, {...state})){
-
-    }
-
-  })
-
-  client.on("guess", async (guess: Guess) => {
-    const state = await getGameState(gameId)
-    state.playerGuesses[username] = guess
-    tryToUpdateGameState(gameId, {...state})
-  })
-
 })
 
 app.listen(SERVER_PORT, () => {

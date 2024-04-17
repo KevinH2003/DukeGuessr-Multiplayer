@@ -34,7 +34,7 @@ fi
 
 # Start server
 cd server
-npm start &
+DISABLE_SECURITY=security-disabled npm start &
 
 # Start UI
 cd ../ui
