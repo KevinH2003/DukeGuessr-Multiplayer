@@ -22,8 +22,9 @@ declare module 'express-session' {
 }
 
 async function main() {
-const HOST = process.env.HOST || "127.0.0.1"
-const SERVER_PORT = process.env.SERVER_PORT || 7776
+const HOST = process.env.HOST || "localhost"
+const SERVER_PORT = parseInt(process.env.SERVER_PORT) || 7776
+const UI_PORT = parseInt(process.env.UI_PORT) || 7775
 const DISABLE_SECURITY = process.env.DISABLE_SECURITY || ""
 
 const passportStrategies = [
@@ -86,6 +87,24 @@ passport.deserializeUser((user, done) => {
 const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next)
 io.use(wrap(sessionMiddleware))
 
+app.get('/api/login', passport.authenticate(passportStrategies, {
+  successReturnToOrRedirect: "/"
+}))
+
+app.get('/api/login-callback', passport.authenticate(passportStrategies, {
+  successReturnToOrRedirect: '/',
+  failureRedirect: '/',
+}))
+
+function checkAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    res.sendStatus(401)
+    return
+  }
+
+  next()
+}
+
 //routes
 app.post(
   "/api/logout", 
@@ -140,45 +159,38 @@ passport.use("disable-security", new CustomStrategy((req, done) => {
     console.log("you must supply ?key=" + DISABLE_SECURITY + " to log in via DISABLE_SECURITY")
     done(null, false)
   } else {
-    done(null, { preferred_username: req.query.user })
+    done(null, { preferred_username: req.query.user, roles: [].concat(req.query.role) })
   }
 }))
 
-Issuer.discover("https://coursework.cs.duke.edu/").then(issuer => {
+{
+  const issuer = await Issuer.discover("https://coursework.cs.duke.edu/")
   const client = new issuer.Client(gitlab)
+
   const params = {
     scope: 'openid profile email',
     nonce: generators.nonce(),
-    redirect_uri: "http://localhost:7775/login-callback", 
-    //redirect_uri: `http://${HOST}:${SERVER_PORT}/login-callback`,
+    redirect_uri: `http://${HOST}:${UI_PORT}/api/login-callback`,
     state: generators.state(),
+
+    // this forces a fresh login screen every time
+    prompt: "login",
   }
 
-  function verify(tokenSet: any, userInfo: any, done: (error: any, user: any) => void) {
-    console.log('userInfo', userInfo)
-    console.log('tokenSet', tokenSet)
+  async function verify(tokenSet: any, userInfo: any, done: any) {
+    logger.info("oidc " + JSON.stringify(userInfo))
+    // console.log('userInfo', userInfo)
+    //userInfo.roles = userInfo.groups.includes(OPERATOR_GROUP_ID) ? ["operator"] : ["customer"]
     return done(null, userInfo)
   }
 
   passport.use('oidc', new Strategy({ client, params }, verify))
-  app.get(
-    "/api/login", 
-    passport.authenticate("oidc", { failureRedirect: "/api/login" }), 
-    (req, res) => res.redirect("/")
-  )
-
-  app.get(
-    "/login-callback",
-    passport.authenticate("oidc", {
-      successRedirect: "/",
-      failureRedirect: "/api/login",
-    })
-  )    
-})  
-
-server.listen(port)
-logger.info(`Game server listening on port ${port}`)
-
 }
+
+app.listen(port, () => {
+  console.log(`DukeGuessr listening on port: ${port}`)
+})
+}
+
 
 main()
