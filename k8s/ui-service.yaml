@@ -9,7 +9,7 @@ spec:
   ports:
   - name: "ui-service"
     port: 5775
-    targetPort: 75
+    targetPort: 80
     nodePort: 31775
   selector:
     app: ui
