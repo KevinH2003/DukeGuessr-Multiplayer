@@ -8,6 +8,7 @@ import 'bootstrap-vue/dist/bootstrap-vue.css'
 import App from './App.vue'
 import Home from './views/Home.vue'
 import Game from './views/Game.vue'
+/*
 function generateRandomGameId() {
 	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 	let gameId = '';
@@ -16,7 +17,7 @@ function generateRandomGameId() {
 	  gameId += characters[randomIndex];
 	}
 	return gameId;
-}
+}*/
 
 const routes = [
   	{

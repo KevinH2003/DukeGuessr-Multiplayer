@@ -41,7 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const user:Ref<User> | undefined = inject("user")
-const username: Ref<string | undefined> = computed(() => user?.value.preferred_username)
+const username: ComputedRef<string | undefined> = computed(() => user?.value.preferred_username)
 
 const socket = io({ transports: ["websocket"] })
 
