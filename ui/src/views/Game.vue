@@ -3,8 +3,6 @@
     <div class="image-container">
         <b-img :src="gameState?.locations[0].imageUrl" thumbnail rounded fluid alt="Image"></b-img>
     </div>
-    <div>{{ gameId }}</div>
-    <div>{{ test }}</div>
     <div>{{ JSON.stringify(gameState) }}</div>
     <div>{{ JSON.stringify(user) }}</div>
     <b-button @click="newGame"></b-button>
