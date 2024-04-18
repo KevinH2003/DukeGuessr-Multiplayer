@@ -9,6 +9,19 @@ export type Player = string
 export type Time = number
 export type Id = number
 
+export interface User {
+    sub: string
+    sub_legacy: string
+    name: string
+    nickname: string
+    preferred_username: string
+    email: string
+    email_verified: boolean
+    profile: string
+    picture: string
+    groups: string[]
+}
+
 export type Coordinates = {
     lat: number
     long: number

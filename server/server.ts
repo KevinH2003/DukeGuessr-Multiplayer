@@ -12,7 +12,7 @@ import { Strategy as CustomStrategy } from "passport-custom"
 import { gitlab } from "./secrets"
 import { setupMongo } from "./gamestate-mongo"
 import { setupRedis } from "./redis"
-import { Location, Guess, createEmptyGame, GameSetup, GameState, Coordinates } from "./model"
+import { Location, Guess, createEmptyGame, GameSetup, GameState, Coordinates, User } from "./model"
 import { validateRequestBody } from "./utils"
 import { emit } from "process"
 
@@ -83,14 +83,27 @@ app.use(sessionMiddleware)
 
 app.use(passport.initialize())
 app.use(passport.session())
-passport.serializeUser((user, done) => {
-  //console.log("serializeUser", user)
+passport.serializeUser((user: User, done) => {
+  logger.info("serializeUser " + user.preferred_username)
   done(null, user)
 })
-passport.deserializeUser((user, done) => {
-  //console.log("deserializeUser", user)
+passport.deserializeUser((user: User, done) => {
+  logger.info("deserializeUser " + user.preferred_username)
   done(null, user)
 })
+
+passport.use("disable-security", new CustomStrategy((req, done) => {
+  logger.info("trying to disable security...")
+  if (req.query.key !== DISABLE_SECURITY) {
+    logger.info("disable security failed")
+    console.log("you must supply ?key=" + DISABLE_SECURITY + " to log in via DISABLE_SECURITY")
+    done(null, false)
+  } else {
+    //done(null, { name: req.query.name, preferred_username: req.query.preferred_username, roles: [].concat(req.query.role) })
+    logger.info("disable security succeeded")
+    done(null, { name: req.query.name, preferred_username: req.query.preferred_username })
+  }
+}))
 
 // convert a connect middleware to a Socket.IO middleware
 const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next)
@@ -105,42 +118,46 @@ io.engine.on("connection_error", (err) => {
 });*/
 
 io.on('connection', client => {
-  const user = (client.request as any).session?.passport?.preferred_username
-  logger.info("new socket connection for user " + JSON.stringify(user))
-  /*
+  const user = (client.request as any).session?.passport?.user
+  logger.info("New socket connection for user: " + JSON.stringify(user.preferred_username))
+  
   if (!user) {
-    logger.info("disconnected")
+    logger.info("Disconnected: User Not Authenticated")
     client.disconnect()
     return
-  }*/
+  }
 
-  function emitGameState(id: string) {
-    let state = getGameState(id)
-    client.to(id).emit(
+  async function emitGameState(id: string) {
+    let state = await getGameState(id)
+    logger.info(`Emitting GameState to ${id}`)
+    io.to(id).emit(
       "gamestate", 
       state
     )
   }
 
-  let username: string | null = null
+  let username: string = user.preferred_username
   let gameId: string | null = null
 
+  /*
   client.on("username", (name: string) => {
     username = name
     logger.info("Username Set: " + username)
     client.join(username)
-  })
-
+  })*/
+  
   client.on("game-id", async (id: string) => {
     gameId = id
     logger.info("Game ID Set: " + gameId)
-    client.join(gameId)
+    client.join(String(gameId))
+    //let rooms = client.rooms
+    //logger.info('Rooms joined by client: ' + JSON.stringify(rooms))
     let game = await getGameState(gameId)
-    
     if (!game){
+      logger.info("Creating new game..." + JSON.stringify(gameId))
       await newGame(defaultGameSetup, gameId)
     }
-    emitGameState(gameId)
+    await emitGameState(gameId)
   })
 
   client.on("guess", async (coords: Coordinates) => {
@@ -187,19 +204,6 @@ app.post(
     })
   }
 )
-
-passport.use("disable-security", new CustomStrategy((req, done) => {
-  logger.info("trying to disable security...")
-  if (req.query.key !== DISABLE_SECURITY) {
-    logger.info("disable security failed")
-    console.log("you must supply ?key=" + DISABLE_SECURITY + " to log in via DISABLE_SECURITY")
-    done(null, false)
-  } else {
-    //done(null, { name: req.query.name, preferred_username: req.query.preferred_username, roles: [].concat(req.query.role) })
-    logger.info("disable security succeeded")
-    done(null, { name: req.query.name, preferred_username: req.query.preferred_username })
-  }
-}))
 
 {
   const issuer = await Issuer.discover("https://coursework.cs.duke.edu/")

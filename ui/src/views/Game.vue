@@ -112,8 +112,8 @@ const inputs: Coordinates[] = [
 ]
 const socket = io({ transports: ["websocket"]})
 //const socket = io()
-console.log("Username:", JSON.stringify(username.value))
-socket.emit("username", username.value)
+//console.log("Username:", JSON.stringify(username.value))
+//socket.emit("username", username.value)
 
 console.log("Game:", JSON.stringify(props.gameId))
 socket.emit("game-id", props.gameId)
@@ -130,6 +130,7 @@ socket.on("connect_error", (err: any) => {
 })
 
 socket.on("gamestate", (state: GameState) => {
+    console.log("Gamestate Received")
   	gameState.value = state
 })
 
