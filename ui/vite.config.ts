@@ -21,17 +21,17 @@ export default defineConfig({
   ],
 
 	server: {
-		port: 7775,
+		port: parseInt(process.env.UI_PORT || "7775"),
 		proxy: {
 			"^/socket.io": {
-				target: "http://localhost:7776",
+				target: `http://127.0.0.1:${process.env.SERVER_PORT || "7776"}`,
         ws: true
 			},
       "^/login-callback": {
-				target: "http://localhost:7776",
+				target: `http://127.0.0.1:${process.env.SERVER_PORT || "7776"}`,
 			},
       "^/api": {
-				target: "http://localhost:7776",
+				target: `http://127.0.0.1:${process.env.SERVER_PORT || "7776"}`,
 			},
     }
 	},

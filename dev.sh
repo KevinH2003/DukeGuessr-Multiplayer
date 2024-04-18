@@ -36,6 +36,8 @@ fi
 cd server
 DISABLE_SECURITY=security-disabled npm start &
 
+sleep 2
+
 # Start UI
 cd ../ui
 npm run dev

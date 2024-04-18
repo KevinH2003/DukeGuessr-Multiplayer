@@ -12,7 +12,7 @@ import { Strategy as CustomStrategy } from "passport-custom"
 import { gitlab } from "./secrets"
 import { setupMongo } from "./gamestate-mongo"
 import { setupRedis } from "./redis"
-import { Location, Guess, createEmptyGame, GameSetup, GameState } from "./model"
+import { Location, Guess, createEmptyGame, GameSetup, GameState, Coordinates } from "./model"
 import { validateRequestBody } from "./utils"
 import { emit } from "process"
 
@@ -55,7 +55,7 @@ const logger = pino({
     target: 'pino-pretty'
   }
 })
-app.use(expressPinoLogger({ logger }))
+//app.use(expressPinoLogger({ logger }))
 
 // set up CORS
 // app.use(cors({
@@ -81,12 +81,71 @@ app.use(sessionMiddleware)
 app.use(passport.initialize())
 app.use(passport.session())
 passport.serializeUser((user, done) => {
-  console.log("serializeUser", user)
+  //console.log("serializeUser", user)
   done(null, user)
 })
 passport.deserializeUser((user, done) => {
-  console.log("deserializeUser", user)
+  //console.log("deserializeUser", user)
   done(null, user)
+})
+
+
+// convert a connect middleware to a Socket.IO middleware
+const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next)
+io.use(wrap(sessionMiddleware))
+
+io.on('connection', client => {
+  const user = (client.request as any).session?.passport?.preferred_username
+  logger.info("new socket connection for user " + JSON.stringify(user))
+  if (!user) {
+    client.disconnect()
+    return
+  }
+
+  function emitGameState(id: string) {
+    let state = getGameState(id)
+    client.to(id).emit(
+      "gamestate", 
+      state
+    )
+  }
+
+  logger.info("SOCKETIO CONNECTION\n\n\n\n\n\n\n\n\n\n\n")
+  console.log("New client")
+
+  let username: string | null = null
+  let gameId: string | null = null
+
+  client.on("username", (name: string) => {
+    username = name
+    console.log("Username Set: ", username)
+    client.join(username)
+  })
+
+  client.on("game-id", async (id: string) => {
+    gameId = id
+    console.log("Game ID Set: ", gameId)
+    client.join(gameId)
+    let game = await getGameState(gameId)
+    
+    if (!game){
+      await newGame(defaultGameSetup, gameId)
+    }
+    emitGameState(gameId)
+  })
+
+  client.on("guess", async (coords: Coordinates) => {
+    const state = await getGameState(gameId)
+    //Should eventually do time handling stuff here, for now just put it as 0
+    state.playerGuesses[username] = {coords, timeSubmitted: 0} as Guess
+    if (await tryToUpdateGameState(gameId, {...state})){
+      emitGameState(gameId)
+    } else{
+      //Error handling
+    }
+
+  })
+
 })
 
 app.get('/api/login', passport.authenticate(passportStrategies, {
@@ -156,55 +215,6 @@ passport.use("disable-security", new CustomStrategy((req, done) => {
 
   passport.use('oidc', new Strategy({ client, params }, verify))
 }
-
-// convert a connect middleware to a Socket.IO middleware
-const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next)
-io.use(wrap(sessionMiddleware))
-
-io.on('connection', client => {
-  function emitGameState(id: string) {
-    let state = getGameState(id)
-    client.to(id).emit(
-      "game-state", 
-      state
-    )
-  }
-
-  console.log("New client")
-
-  let username: string | null = null
-  let gameId: string | null = null
-
-  client.on("username", (name: string) => {
-    username = name
-    console.log("Username Set: ", username)
-    client.join(username)
-  })
-
-  client.on("game-id", async (id: string) => {
-    gameId = id
-    console.log("Game ID Set: ", gameId)
-    client.join(gameId)
-    const game = await getGameState(gameId)
-    
-    if (!game){
-      await newGame(defaultGameSetup, )
-    }
-  })
-
-  client.on("guess", async (guess: Guess) => {
-    const state = await getGameState(gameId)
-    state.playerGuesses[username] = guess
-    if (await tryToUpdateGameState(gameId, {...state})){
-      emitGameState(gameId)
-    } else{
-      //Error handling
-    }
-
-  })
-
-})
-
 
 app.get("/api/user", (req, res) => {
   res.json(req.user || {})
