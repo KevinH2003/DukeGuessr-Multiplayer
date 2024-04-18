@@ -23,9 +23,12 @@ declare module 'express-session' {
 }
 
 async function main() {
-const HOST = process.env.HOST || "localhost"
-const SERVER_PORT = parseInt(process.env.SERVER_PORT) || 7776
-const UI_PORT = parseInt(process.env.UI_PORT) || 7775
+const HOST = "localhost"
+const SERVER_PORT = 7776
+const UI_PORT = 7775
+//const HOST = process.env.HOST || "localhost"
+//const SERVER_PORT = parseInt(process.env.SERVER_PORT) || 7776
+//const UI_PORT = parseInt(process.env.UI_PORT) || 7775
 const DISABLE_SECURITY = process.env.DISABLE_SECURITY || ""
 
 const passportStrategies = [
@@ -39,13 +42,13 @@ const defaultGameSetup: GameSetup = {
   numRounds: 5,
 }
 
-
 // set up Express
 const app = express()
 const server = createServer(app)
 const { db, gamesCollection, getGameState, tryToUpdateGameState, newGame } = await setupMongo()
 const { socketIoAdapter: adapter } = await setupRedis()
-const io = new Server(server, { adapter })
+//const io = new Server(server, { adapter })
+const io = new Server(server)
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
@@ -89,18 +92,27 @@ passport.deserializeUser((user, done) => {
   done(null, user)
 })
 
-
 // convert a connect middleware to a Socket.IO middleware
 const wrap = (middleware: any) => (socket: any, next: any) => middleware(socket.request, {}, next)
 io.use(wrap(sessionMiddleware))
 
+/*
+io.engine.on("connection_error", (err) => {
+  console.log(err.req);      // the request object
+  console.log(err.code);     // the error code, for example 1
+  console.log(err.message);  // the error message, for example "Session ID unknown"
+  console.log(err.context);  // some additional error context
+});*/
+
 io.on('connection', client => {
   const user = (client.request as any).session?.passport?.preferred_username
   logger.info("new socket connection for user " + JSON.stringify(user))
+  /*
   if (!user) {
+    logger.info("disconnected")
     client.disconnect()
     return
-  }
+  }*/
 
   function emitGameState(id: string) {
     let state = getGameState(id)
@@ -110,21 +122,18 @@ io.on('connection', client => {
     )
   }
 
-  logger.info("SOCKETIO CONNECTION\n\n\n\n\n\n\n\n\n\n\n")
-  console.log("New client")
-
   let username: string | null = null
   let gameId: string | null = null
 
   client.on("username", (name: string) => {
     username = name
-    console.log("Username Set: ", username)
+    logger.info("Username Set: " + username)
     client.join(username)
   })
 
   client.on("game-id", async (id: string) => {
     gameId = id
-    console.log("Game ID Set: ", gameId)
+    logger.info("Game ID Set: " + gameId)
     client.join(gameId)
     let game = await getGameState(gameId)
     
@@ -136,6 +145,7 @@ io.on('connection', client => {
 
   client.on("guess", async (coords: Coordinates) => {
     const state = await getGameState(gameId)
+    logger.info("Guess received: ", coords)
     //Should eventually do time handling stuff here, for now just put it as 0
     state.playerGuesses[username] = {coords, timeSubmitted: 0} as Guess
     if (await tryToUpdateGameState(gameId, {...state})){
@@ -177,7 +187,6 @@ app.post(
     })
   }
 )
-
 
 passport.use("disable-security", new CustomStrategy((req, done) => {
   logger.info("trying to disable security...")
@@ -241,10 +250,13 @@ app.get("/api/game/:gameId", checkAuthenticated, async (req, res) => {
   res.status(200).json( await getGameState(req.params.gameId))
 })
 
-app.listen(SERVER_PORT, () => {
+server.listen(SERVER_PORT, () => {
   console.log(`DukeGuessr listening on port: ${SERVER_PORT}`)
 })
+
+/*
+app.listen(SERVER_PORT, () => {
+  console.log(`DukeGuessr listening on port: ${SERVER_PORT}`)
+})*/
 }
-
-
 main()

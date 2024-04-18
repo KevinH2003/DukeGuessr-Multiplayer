@@ -77,8 +77,8 @@
 </style>
 
 <script setup lang="ts">
-import { ref, Ref, computed, ComputedRef, inject, onMounted,  } from 'vue'
-import { GameState, User, Guess, Coordinates } from '../model'
+import { ref, Ref, computed, ComputedRef, inject, } from 'vue'
+import { GameState, User, Coordinates } from '../model'
 import { io } from 'socket.io-client'
 
 interface Props {
@@ -110,12 +110,24 @@ const inputs: Coordinates[] = [
 		elev: 3,
 	},
 ]
-const socket = io({ transports: ["websocket"] })
+const socket = io({ transports: ["websocket"]})
+//const socket = io()
 console.log("Username:", JSON.stringify(username.value))
-socket.emit("username", username)
+socket.emit("username", username.value)
 
 console.log("Game:", JSON.stringify(props.gameId))
 socket.emit("game-id", props.gameId)
+
+socket.on("connect_error", (err: any) => {
+  // the reason of the error, for example "xhr poll error"
+  console.log(err.message);
+
+  // some additional description, for example the status code of the initial HTTP response
+  console.log(err.description);
+
+  // some additional context, for example the XMLHttpRequest object
+  console.log(err.context);
+})
 
 socket.on("gamestate", (state: GameState) => {
   	gameState.value = state
