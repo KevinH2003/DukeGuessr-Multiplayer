@@ -230,7 +230,7 @@ app.post(
 }
 
 app.get("/api/user", (req, res) => {
-  res.json(req.user || {})
+  res.json(req?.user || {})
 })
 
 app.put("/api/game/:gameId?", checkAuthenticated, async (req, res) => {

@@ -22,6 +22,7 @@ else
     echo "Running setup..."
     cd server
     npm run setup
+    cd ../
 fi
 
 # Check if Redis container is already running
@@ -36,7 +37,7 @@ fi
 cd server
 DISABLE_SECURITY=security-disabled npm start &
 
-sleep 2
+sleep 5
 
 # Start UI
 cd ../ui
