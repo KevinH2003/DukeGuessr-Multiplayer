@@ -47,7 +47,7 @@ span {
 <script setup lang="ts">
 //import { onMounted, ref, computed, Ref, ComputedRef } from 'vue'
 import {Ref, ref, ComputedRef, computed, onMounted} from 'vue'
-import { GameSetup } from '../model';
+//import { GameSetup } from '../model';
 //import {GameSetup, GameState} from '../../../server/model'
 
 const gameId: Ref<string> = ref("")

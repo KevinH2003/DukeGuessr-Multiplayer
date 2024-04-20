@@ -23,12 +23,9 @@ declare module 'express-session' {
 }
 
 async function main() {
-const HOST = "localhost"
-const SERVER_PORT = 7776
-const UI_PORT = 7775
-//const HOST = process.env.HOST || "localhost"
-//const SERVER_PORT = parseInt(process.env.SERVER_PORT) || 7776
-//const UI_PORT = parseInt(process.env.UI_PORT) || 7775
+const HOST = process.env.HOST || "localhost"
+const SERVER_PORT = parseInt(process.env.SERVER_PORT) || 7776
+const UI_PORT = parseInt(process.env.UI_PORT) || 7775
 const DISABLE_SECURITY = process.env.DISABLE_SECURITY || ""
 
 const passportStrategies = [
