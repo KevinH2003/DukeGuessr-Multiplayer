@@ -8,8 +8,8 @@
         <div class="image-container">
           <b-img :src="gameState?.locations[0].imageUrl" thumbnail rounded alt="Location 1"></b-img>
         </div>
-        <div class="image-container">
-          <b-img :src="gameState?.locations[1].imageUrl" thumbnail rounded alt="Location 2"></b-img>
+        <div class="image-container map-container">
+          <b-img :src="gameState?.locations[1].imageUrl" thumbnail rounded alt="Location 2" @click="dropPin()"></b-img>
         </div>
       </div>
       <b-row class="button-row">
@@ -17,6 +17,11 @@
           <b-button @click="guess(input)" class="button" :variant="input === currentGuess ? 'primary' : 'secondary'">{{ input.lat }}</b-button>
         </b-col>
       </b-row>
+      <div v-for="(pin, index) in pins" :key="index" class="pin" :style="{ top: pin.y + 'px', left: pin.x + 'px' }">
+        <!-- Optionally display pin details -->
+        <span>{{ pin.lat }}, {{ pin.long }}</span>
+      </div>
+      <div class="game-state">{{ JSON.stringify(pins) }}</div>
       <div class="game-state">{{ JSON.stringify(gameState) }}</div>
       <b-button @click="newGame" variant="primary" class="start-button">Start New Game</b-button>
     </div>
@@ -131,12 +136,27 @@
     transform: translateY(0);
   }
 }
+.map-container {
+  position: relative;
+}
+
+/* Pins styling */
+.pin {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: red; /* Customize pin color */
+  cursor: pointer; /* Show pointer cursor on hover */
+  z-index: 1; /* Ensure pins are displayed above the map */
+}
 </style>
 
 <script setup lang="ts">
 import { ref, Ref, computed, ComputedRef, inject, } from 'vue'
-import { GameState, User, Coordinates } from '../model'
 import { io } from 'socket.io-client'
+import { useMouse } from '@vueuse/core'
+import { GameState, User, Coordinates, Player } from '../model'
 
 interface Props {
   gameId: string
@@ -147,6 +167,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const user:Ref<User> | undefined = inject("user")
+const username: ComputedRef<string> = computed( () => user?.value.preferred_username || "None")
 const players: Ref<string[]> = ref(["klh124"])
 const scores: Ref<{ [key: string]: number }> = ref({klh124: 5})
 const currentGuess: Ref<Coordinates | undefined> = ref()
@@ -169,6 +190,48 @@ const inputs: Coordinates[] = [
 		elev: 3,
 	},
 ]
+
+const { x, y } = useMouse()
+type Pin = {
+  player: Player,
+  lat: number,
+  long: number,
+  x: number,
+  y: number,
+}
+
+const pins: Ref<Pin[]> = ref([]) // Store pins with lat/long coordinates
+
+const dropPin = () => {
+  console.log("Trying to find rect...")
+  const rect = document.querySelector('.map-container')?.getBoundingClientRect() // Get the bounding rect of the map container
+  if (!rect) return
+
+  console.log("found rect")
+
+  const offsetX = x.value - rect.left;
+  const offsetY = y.value - rect.top;
+
+  // Convert coordinates to latitude and longitude based on map dimensions
+  // This logic may vary depending on the specifics of your map image
+  const lat = offsetY
+  const long = offsetX
+
+  // Add pin to pins array
+  const existingPinIndex = pins.value.findIndex(pin => pin.player === username.value);
+  if (existingPinIndex !== -1) {
+    // Update existing pin
+    pins.value[existingPinIndex].lat = lat;
+    pins.value[existingPinIndex].long = long;
+    pins.value[existingPinIndex].x = offsetX;
+    pins.value[existingPinIndex].y = offsetY;
+  } else {
+    // Add new pin
+    pins.value.push({ player: username.value, lat, long, x: offsetX, y: offsetY });
+  }
+
+  // Optionally, emit an event or perform other actions
+}
 const socket = io({ transports: ["websocket"]})
 
 console.log("Game:", JSON.stringify(props.gameId))
