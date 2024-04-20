@@ -72,7 +72,7 @@ export interface GameState extends GameSetup{
     currTime: Time
 }
 
-export function determineWinner(state: GameState): Player {
+export function determineWinner(state: GameState): Player | undefined {
     const { players, playerScores } = state;
 
     // find the key of the maximum score

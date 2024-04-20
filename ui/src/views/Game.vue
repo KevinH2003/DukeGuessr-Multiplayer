@@ -1,60 +1,106 @@
 <template>
-    <div>Game!</div>
-	<div>{{ username }}</div>
-    <div class="image-wrapper">
+  <div class="container">
+    <div class="content">
+      <div class="player-scores">
+        <div v-for="(player, index) in players" :key="index" class="player-score">{{ player }}: {{ scores[player] }}</div>
+      </div>
+      <div class="image-wrapper">
         <div class="image-container">
-            <b-img :src="gameState?.locations[0].imageUrl" thumbnail rounded fluid alt="Image"></b-img>
+          <b-img :src="gameState?.locations[0].imageUrl" thumbnail rounded alt="Location 1"></b-img>
         </div>
         <div class="image-container">
-            <b-img :src="gameState?.locations[1].imageUrl" thumbnail rounded fluid alt="Image"></b-img>
+          <b-img :src="gameState?.locations[1].imageUrl" thumbnail rounded alt="Location 2"></b-img>
         </div>
-    </div>
-    <b-row>
-        <b-col v-for="(input, index) in inputs" :key="index" cols="auto" class="button-container">
-            <b-button @click="guess(input)" class="button">{{ input.lat }}</b-button>
+      </div>
+      <b-row class="button-row">
+        <b-col v-for="(input, index) in inputs" :key="index" class="button-container">
+          <b-button @click="guess(input)" class="button" :variant="input === currentGuess ? 'primary' : 'secondary'">{{ input.lat }}</b-button>
         </b-col>
-    </b-row>
-    <div>{{ JSON.stringify(gameState) }}</div>
-    <div>{{ JSON.stringify(user) }}</div>
-    <b-button @click="newGame"></b-button>
+      </b-row>
+      <div class="game-state">{{ JSON.stringify(gameState) }}</div>
+      <b-button @click="newGame" variant="primary" class="start-button">Start New Game</b-button>
+    </div>
+  </div>
 </template>
 
-<style>
-.image-wrapper {
-    display: flex;
-    flex-wrap: wrap;
+<style scoped>
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 85%;
+  max-height: 85%;
+  overflow: hidden;
 }
+
+.content {
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-height: 50%;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  animation: fadeInUp 0.75s ease;
+}
+
+.player-scores {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.player-score {
+  font-size: 16px;
+  margin-right: 10px;
+  color: #555;
+}
+
+.image-wrapper {
+  display: flex;
+  max-height: 100%;
+  justify-content: center;
+  margin: 10px;
+}
+
 .image-container {
-    overflow: hidden; /* Prevent image from overflowing container */
-    margin-left: auto;
-    margin-right: auto;
-    justify-content: center; /* Center horizontally */
-    align-items: center; /* Center vertically */
-    display: grid;
-    place-items: center;
-    aspect-ratio: 1 / 1;
+  flex: 1; /* Allow image containers to grow and shrink */
+  margin: 10px;
+  overflow: hidden; /* Prevent image from overflowing container */
+  aspect-ratio: 1 / 1; /* Maintain aspect ratio */
 }
 
 .image-container b-img {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: cover; /* Maintain aspect ratio and cover container */ 
-    object-position: center;
+  width: 100%;
+  height: 100%; /* Ensure the image fills the container */
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.button-row {
+  margin-bottom: 10px;
 }
 
 .button-container {
-	width: auto;
-	margin-left: auto;
-    margin-right: auto;
+  margin: 5px;
 }
 
 .button {
-	max-width: fit-content;
-	min-width: 10vw;
+  width: 100%;
+  font-size: 16px;
 }
 
+.start-button {
+  width: 100%;
+  font-size: 18px;
+}
+
+.game-state {
+  font-size: small;
+}
+
+/* Ensure images are always squares */
 @media (min-aspect-ratio: 1/1) {
   .image-container {
     width: auto;
@@ -62,7 +108,7 @@
   }
 }
 
-@media (max-aspect-ratio: 1/1) {
+@media (min-aspect-ratio: 1/1) {
   .image-container {
     width: 75vw;
     height: auto;
@@ -74,6 +120,17 @@
     flex-direction: column;
   }
 }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 </style>
 
 <script setup lang="ts">
@@ -82,15 +139,17 @@ import { GameState, User, Coordinates } from '../model'
 import { io } from 'socket.io-client'
 
 interface Props {
-    gameId: string
+  gameId: string
 }
 // default values for props
 const props = withDefaults(defineProps<Props>(), {
-    gameId: "",
+  gameId: "",
 })
 
 const user:Ref<User> | undefined = inject("user")
-const username: ComputedRef<string | undefined> = computed(() => user?.value.preferred_username)
+const players: Ref<string[]> = ref(["klh124"])
+const scores: Ref<{ [key: string]: number }> = ref({klh124: 5})
+const currentGuess: Ref<Coordinates | undefined> = ref()
 
 const gameState: Ref<GameState | null> = ref(null)
 const inputs: Coordinates[] = [
@@ -111,9 +170,6 @@ const inputs: Coordinates[] = [
 	},
 ]
 const socket = io({ transports: ["websocket"]})
-//const socket = io()
-//console.log("Username:", JSON.stringify(username.value))
-//socket.emit("username", username.value)
 
 console.log("Game:", JSON.stringify(props.gameId))
 socket.emit("game-id", props.gameId)
@@ -130,16 +186,22 @@ socket.on("connect_error", (err: any) => {
 })
 
 socket.on("gamestate", (state: GameState) => {
-    console.log("Gamestate Received")
-  	gameState.value = state
+  console.log("Gamestate Received")
+  gameState.value = state
+})
+
+socket.on("players", (playerArray: string[], playerScores: { [key: string]: number }) => {
+  players.value = playerArray
+  scores.value = playerScores
 })
 
 const newGame = () => {
-  	socket.emit("new-game")
+  socket.emit("new-game")
 }
 
 const guess = (coords: Coordinates) => {
-  	socket.emit("guess", coords)
+  currentGuess.value = coords
+  socket.emit("guess", coords)
 }
 
 </script>

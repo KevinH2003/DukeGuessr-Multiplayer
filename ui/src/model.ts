@@ -1,4 +1,4 @@
-export const MODES = ["west", "east", "gardens", "all"]
+export const MODES = ["all", "west", "east", "gardens"]
 export const PHASES = ["guessing", "score-display", "game-over"]
 
 export type Mode = typeof MODES[number]
@@ -31,7 +31,15 @@ export type Guess = {
     coords: Coordinates
 }
 
-export type GuessInProgress = Guess | null
+//export type GuessInProgress = Guess | null
+
+export type PlayerGuesses = {
+    [key: Player]: Guess
+}
+
+export type PlayerScores = {
+    [key: Player]: number
+}
 
 export interface StrippedLocation {
     _id: Id
@@ -44,53 +52,54 @@ export interface Location extends StrippedLocation {
 }
 
 export interface GameSetup {
-    players: Player[]
     mode: Mode
     numRounds: number
+    players?: Player[]
     numPlayers?: number
     roundLength?: Time
 }
 
 export interface GameState extends GameSetup{
+    players: Player[]
     locations: Location[]
     round: number
-    playerScores: number[]
-    playerGuesses: GuessInProgress[]
+    playerScores: PlayerScores
+    playerGuesses: PlayerGuesses
     phase: Phase
     roundStart: Time
     currTime: Time
 }
 
-export function determineWinner(state: GameState): Player{
+export function determineWinner(state: GameState): Player | undefined {
     const { players, playerScores } = state;
 
-    // find the index of the maximum score
-    const maxScoreIndex = playerScores.reduce((maxIndex, score, currentIndex) => {
-        if (score > playerScores[maxIndex]) {
-            return currentIndex; 
+    // find the key of the maximum score
+    const maxScoreKey = Object.keys(playerScores).reduce((maxKey, key) => {
+        if (playerScores[key] > playerScores[maxKey]) {
+            return key;
         } else {
-            return maxIndex;
+            return maxKey;
         }
-    }, 0);
+    }, Object.keys(playerScores)[0]); // Initialize with the first key
 
-    // return the player corresponding to the index of the maximum score
-    return players[maxScoreIndex];
+    // return the player corresponding to the key of the maximum score
+    return players.find(player => player === maxScoreKey);
 }
 
 export function createEmptyGame(params: GameSetup, locations: Location[]): GameState {
     const emptyGame: GameState = {
-        players: params.players,
+        players: [],
         mode: params.mode,
         locations: locations,
         numRounds: params.numRounds,
-        numPlayers: params?.numPlayers || params.players?.length,
-        roundLength: params?.roundLength || 0, // Default to 0 if roundLength is not provided
+        numPlayers: params?.numPlayers || -1,
+        roundLength: params?.roundLength || -1, 
         round: 0,
-        playerScores: Array(params.players.length).fill(0), // Initialize player scores with zeros
-        playerGuesses: Array(params.players.length).fill(null), // Initialize player guesses with nulls
+        playerScores: {}, 
+        playerGuesses: {}, 
         phase: "guessing", // Initial phase is guessing
-        roundStart: 0, // Initialize round start time
-        currTime: 0 // Initialize current time
+        roundStart: 0, 
+        currTime: 0,
     }
     return emptyGame
 }

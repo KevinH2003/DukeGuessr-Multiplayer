@@ -155,8 +155,9 @@ io.on('connection', client => {
       await newGame(defaultGameSetup, gameId)
       game = await getGameState(gameId)
     }
-    game.players.push(username)
-
+    if (!game.players.includes(username)){
+      game.players.push(username)
+    }
     await tryToUpdateGameState(gameId, game)
     await emitGameState(gameId)
   })
