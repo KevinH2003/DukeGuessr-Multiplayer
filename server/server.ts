@@ -12,7 +12,7 @@ import { Strategy as CustomStrategy } from "passport-custom"
 import { gitlab } from "./secrets"
 import { setupMongo } from "./gamestate-mongo"
 import { setupRedis } from "./redis"
-import { Location, Guess, createEmptyGame, GameSetup, GameState, Coordinates, User } from "./model"
+import { Location, Guess, createEmptyGame, GameSetup, GameState, Coordinates, User, MODES } from "./model"
 import { validateRequestBody } from "./utils"
 import { emit } from "process"
 
@@ -156,7 +156,11 @@ io.on('connection', client => {
     if (!game){
       logger.info("Creating new game..." + JSON.stringify(gameId))
       await newGame(defaultGameSetup, gameId)
+      game = await getGameState(gameId)
     }
+    game.players.push(username)
+
+    await tryToUpdateGameState(gameId, game)
     await emitGameState(gameId)
   })
 
@@ -229,13 +233,18 @@ app.post(
   passport.use('oidc', new Strategy({ client, params }, verify))
 }
 
+app.get("/api/gamemodes", async (req, res) => {
+  const gamemodes = MODES
+  res.json(gamemodes)
+})
+
 app.get("/api/user", (req, res) => {
   res.json(req?.user || {})
 })
 
 app.put("/api/game/:gameId?", checkAuthenticated, async (req, res) => {
   //If no gameId, will generate a random gameId and return it
-  const requiredAttributes = ['mode', 'numRounds']
+  const requiredAttributes = ['players', 'mode', 'numRounds', 'numPlayers']
 
   // Check if the request body has all the required attributes
   
@@ -245,6 +254,7 @@ app.put("/api/game/:gameId?", checkAuthenticated, async (req, res) => {
   
   const gameParams = req.body
   
+  logger.info("Creating New Game: " + JSON.stringify(gameParams))
   const newGameId: string = await newGame(gameParams, req.params.gameId)
   //res.status(200).json(getGameState(newGameId))
   res.status(200).json(newGameId)

@@ -1,6 +1,6 @@
 import { MongoClient, ObjectId } from "mongodb"
 
-export const MODES = ["west", "east", "gardens", "all"]
+export const MODES = ["all", "west", "east", "gardens"]
 export const PHASES = ["guessing", "score-display", "game-over"]
 
 export type Mode = typeof MODES[number]
@@ -56,6 +56,7 @@ export interface Location extends StrippedLocation {
 export interface GameSetup {
     mode: Mode
     numRounds: number
+    players?: Player[]
     numPlayers?: number
     roundLength?: Time
 }

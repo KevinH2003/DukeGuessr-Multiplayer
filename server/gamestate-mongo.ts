@@ -46,7 +46,7 @@ export async function setupMongo() {
 		  
 			// Check if not enough locations available
 			if (locations.length < params.numRounds) {
-			  	console.log("Not enough locations to support ${num_rounds} rounds, setting num_rounds to max number of locations (${locations.length})")
+			  	console.log(`Not enough locations to support ${params.numRounds} rounds, setting num_rounds to max number of locations (${locations.length})`)
 			  	params.numRounds = locations.length
 			}
 

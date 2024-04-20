@@ -39,7 +39,7 @@ const routes = [
 			gameId: gameId.padStart(24, '0') // Zero-padding gameId to 24 characters
 		})
 		//props: ({ params: { gameId }}: { params: { gameId: string } }) => ({ gameId })
-  	}
+  	},
 ]
 
 const router = createRouter({
