@@ -3,7 +3,7 @@
 <div class="content">
 <h2 class="header">New Game:</h2>
   <div class="gamemodes">
-    <b-button v-for="(mode, index) in gamemodes" :key="index" @click="selectGamemode(mode)" class="mode-button">{{ mode }}</b-button>
+    <b-button v-for="(mode, index) in gamemodes" :key="index" @click="selectGamemode(mode)" :variant="mode === gamemode ? 'primary' : 'secondary'" class="mode-button">{{ mode }}</b-button>
   </div>
   <div class="form-group">
     <label for="rounds">Number of Rounds: {{ numRounds }}</label>
@@ -21,7 +21,7 @@
     <label for="gameId">Game ID (Leave Blank For Random):</label>
     <b-form-input id="gameId" v-model="gameId" placeholder="" class="form-control"></b-form-input>
   </div>
-  <b-button @click="newGame" variant="success" class="start-game-btn">Start Game</b-button>
+  <b-button @click="newGame" variant="primary" class="start-game-btn">Start Game</b-button>
 </div>
 </div>
 </template>
