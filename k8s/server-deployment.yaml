@@ -27,7 +27,7 @@ spec:
         - name: REDIS_URL
           value: redis://redis
         - name: UI_PORT
-          value: "31775"
+          value: "31775"  # Set UI_PORT for the first server
         - name: SERVER_PORT
           value: "7776"
         - name: HOST
