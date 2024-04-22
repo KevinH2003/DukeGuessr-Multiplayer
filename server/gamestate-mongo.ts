@@ -39,6 +39,7 @@ export async function setupMongo() {
 			}
 		},
 		newGame: async (params: GameSetup, gameId?: string) => {
+			let result: InsertOneResult<Document>
 			// Get locations from locations collection
 			const locations: Location[] = await db.collection("locations").aggregate([
 				{ $sample: { size: params.numRounds } }
@@ -52,23 +53,23 @@ export async function setupMongo() {
 
 			if (typeof(gameId) == "string"){
 				const _id = ObjectId.createFromHexString(gameId)
-				const existingGame = await gamesCollection.findOne({ _id: _id});
+				const existingGame = await gamesCollection.findOne({ _id: _id})
 
-            	if (existingGame) {
+            	if (existingGame && (existingGame?.phase.localeCompare("game-over") == 0)) {
             	    // If the game exists, update it with the new game state
             	    await gamesCollection.updateOne({ _id: _id }, {
-            	        $set: { version: existingGame.version + 1, ...createEmptyGame(params, locations) }
+            	        $set: { ...createEmptyGame(params, locations) }
             	    });
             	    return gameId; // Return the _id of the existing game
-            	}
+            	} else if (!existingGame){
+					result = await gamesCollection.insertOne({_id: ObjectId.createFromHexString(gameId), version: 0, ...createEmptyGame(params, locations)})
+					return String(result.insertedId)
+				} else{
+					console.log("Game Already Exists and In Progress, Setting Random ID")
+				}
 			}
 
-			let result: InsertOneResult<Document>
-			if (typeof(gameId) == "string"){
-				result = await gamesCollection.insertOne({_id: ObjectId.createFromHexString(gameId), version: 0, ...createEmptyGame(params, locations)})
-			} else {
-				result = await gamesCollection.insertOne({_id: new ObjectId(), version: 0, ...createEmptyGame(params, locations)})
-			}
+			result = await gamesCollection.insertOne({_id: new ObjectId(), version: 0, ...createEmptyGame(params, locations)})
 			return String(result.insertedId)
 		}
 	}

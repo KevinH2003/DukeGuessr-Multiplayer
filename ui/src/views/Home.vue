@@ -82,17 +82,33 @@ input[type="range"] {
 }
 </style>
 <script setup lang="ts">
-//import { onMounted, ref, computed, Ref, ComputedRef } from 'vue'
-import {Ref, ref, ComputedRef, computed, onMounted} from 'vue'
-//import { GameSetup } from '../model';
-//import {GameSetup, GameState} from '../../../server/model'
+import {Ref, ref, ComputedRef, computed, onMounted, inject} from 'vue'
+import { User } from '../model'
 
-const gameId: Ref<string> = ref("")
+interface Props {
+  gameId: string,
+  playerNames: string,
+  numPlayers: number,
+  numRounds: number,
+  gamemode: string,
+}
+
+// Define props with default values
+const props = withDefaults(defineProps<Props>(), {
+  gameId: '',
+  playerNames: '',
+  numPlayers: 2,
+  numRounds: 5,
+  gamemode: 'all',
+})
+
+const user: Ref<User> | undefined = inject("user")
+const gameId: Ref<string> = ref(props.gameId || "")
 const gamemodes: Ref<string[]> = ref(["all", "east", "west", "gardens"])
-const gamemode: Ref<string> = ref("all")
-const numRounds: Ref<number> = ref(5)
-const numPlayers: Ref<number> = ref(1)
-const playerNames: Ref<string> = ref('')
+const gamemode: Ref<string> = ref(props.gamemode || "")
+const numRounds: Ref<number> = ref(props.numRounds || 5)
+const numPlayers: Ref<number> = ref(props.numPlayers || 2)
+const playerNames: Ref<string> = ref(props.playerNames || '')
 const players: ComputedRef<string[]> = computed( () => playerNames.value.split(',').map(name => name.trim()))
 const paddedGameId: ComputedRef<string> = computed( () => gameId.value.padStart(24, '0'))
 
@@ -107,7 +123,12 @@ async function getGamemodes() {
 }
 
 async function newGame() {
-    let url = "/api/game"
+  if (!user?.value?.preferred_username){
+    console.log("Not logged in, redirecting to login screen...")
+    window.location.href = `/api/login`
+    return
+  }
+  let url = "/api/game"
     if (gameId.value.trim().length > 0){
         url = "/api/game/" + encodeURIComponent(paddedGameId.value)
     }

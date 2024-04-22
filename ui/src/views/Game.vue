@@ -1,29 +1,50 @@
 <template>
   <div class="container">
     <div class="content">
-      <div class="player-scores">
-        <div v-for="(player, index) in players" :key="index" class="player-score">{{ player }}: {{ scores[player] }}</div>
-      </div>
-      <div class="image-wrapper">
-        <div class="image-container">
-          <b-img :src="gameState?.locations[0].imageUrl" thumbnail rounded alt="Location 1"></b-img>
+      <div v-if="phase.localeCompare(`guessing`) == 0">
+        <div class="player-scores">
+          <div v-for="(player, index) in players" :key="index" class="player-score">{{ player }}: {{ scores[player] || 0 }}</div>
         </div>
-        <div class="image-container map-container">
-          <b-img :src="gameState?.locations[1].imageUrl" thumbnail rounded alt="Location 2" @click="dropPin()"></b-img>
+        <div class="image-wrapper">
+          <div class="image-container">
+            <b-img :src="gameState?.locations[round].imageUrl" thumbnail rounded alt="Location 1"></b-img>
+          </div>
+          <div class="image-container map-container">
+            <b-img :src="gameState?.locations[1].imageUrl" thumbnail rounded alt="Location 2" @click="dropPin()"></b-img>
+          </div>
+        </div>
+        <b-row class="button-row">
+          <b-col v-for="(input, index) in inputs" :key="index" class="button-container">
+            <b-button @click="setGuess(input?.name)" class="button" :variant="input?.name === currentGuess ? 'primary' : 'secondary'">{{ input?.name }}</b-button>
+          </b-col>
+        </b-row>
+        <div v-for="(pin, index) in pins" :key="index" class="pin" :style="{ top: pin.value.y + 'px', left: pin.value.x + 'px' }">
+          <!-- Optionally display pin details -->
+          <span>{{ pin.value.lat }}, {{ pin.value.long }}</span>
+        </div>
+        <div class="game-state">{{ JSON.stringify(gameState) }}</div>
+        <b-button @click="guess" variant="primary" class="submit-button">Submit Guess!</b-button>
+      </div>
+      <div v-else>
+        <h2>Final Results: </h2>
+        <div v-if="players.length === 0">
+          <p>No players</p>
+        </div>
+        <div v-else>
+          <div v-for="(player, index) in sortedPlayers" :key="player" class="player-ranking">
+            <span>{{ index + 1 }}. {{ player }}</span>
+            <span>Score: {{ scores[player] || 0 }}</span>
+          </div>
+          <Home 
+            :gameId="gameId" 
+            :numPlayers="players.length" 
+            :numRounds="gameState?.numRounds" 
+            :gamemode="gameState?.mode"
+            :playerNames="players.join(`, `)"
+            >
+          </Home>
         </div>
       </div>
-      <b-row class="button-row">
-        <b-col v-for="(input, index) in inputs" :key="index" class="button-container">
-          <b-button @click="guess(input)" class="button" :variant="input === currentGuess ? 'primary' : 'secondary'">{{ input.lat }}</b-button>
-        </b-col>
-      </b-row>
-      <div v-for="(pin, index) in pins" :key="index" class="pin" :style="{ top: pin.y + 'px', left: pin.x + 'px' }">
-        <!-- Optionally display pin details -->
-        <span>{{ pin.lat }}, {{ pin.long }}</span>
-      </div>
-      <div class="game-state">{{ JSON.stringify(pins) }}</div>
-      <div class="game-state">{{ JSON.stringify(gameState) }}</div>
-      <b-button @click="newGame" variant="primary" class="start-button">Start New Game</b-button>
     </div>
   </div>
 </template>
@@ -96,7 +117,7 @@
   font-size: 16px;
 }
 
-.start-button {
+.submit-button {
   width: 100%;
   font-size: 18px;
 }
@@ -150,13 +171,38 @@
   cursor: pointer; /* Show pointer cursor on hover */
   z-index: 1; /* Ensure pins are displayed above the map */
 }
+
+.player-ranking {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  margin: 5px 0;
+  border-radius: 8px;
+  background-color: #f0f0f0;
+}
+
+.player-ranking span {
+  font-size: 16px;
+}
+
+.player-ranking span:first-child {
+  flex: 1;
+  margin-left: 10px;
+  font-weight: bold;
+}
+
+.player-ranking span:last-child {
+  margin-left: 10px;
+}
 </style>
 
 <script setup lang="ts">
-import { ref, Ref, computed, ComputedRef, inject, } from 'vue'
+import { ref, Ref, computed, ComputedRef, inject, watch, } from 'vue'
 import { io } from 'socket.io-client'
 import { useMouse } from '@vueuse/core'
-import { GameState, User, Coordinates, Player } from '../model'
+import { GameState, User, Coordinates, Player, Location, PlayerScores } from '../model'
+import Home from './Home.vue'
 
 interface Props {
   gameId: string
@@ -168,28 +214,26 @@ const props = withDefaults(defineProps<Props>(), {
 
 const user:Ref<User> | undefined = inject("user")
 const username: ComputedRef<string> = computed( () => user?.value.preferred_username || "None")
-const players: Ref<string[]> = ref(["klh124"])
-const scores: Ref<{ [key: string]: number }> = ref({klh124: 5})
-const currentGuess: Ref<Coordinates | undefined> = ref()
+const currentGuess: Ref<Coordinates | string | undefined> = ref()
 
 const gameState: Ref<GameState | null> = ref(null)
-const inputs: Coordinates[] = [
-	{
-		lat: 1,
-		long: 1,
-		elev: 1,
-	},
-	{
-		lat: 2,
-		long: 2,
-		elev: 2,
-	},
-	{
-		lat: 3,
-		long: 3,
-		elev: 3,
-	},
-]
+const players: ComputedRef<string[]> = computed( () => gameState.value?.players || [])
+const scores: ComputedRef<PlayerScores> = computed( () => gameState.value?.playerScores || {})
+const inputs: ComputedRef<Location[]> = computed( () => gameState.value?.locations || [])
+const round: ComputedRef<number> = computed( () => gameState.value?.round || 0)
+const phase: ComputedRef<string> = computed ( () => gameState.value?.phase || "guessing")
+
+const sortedPlayers = computed(() => {
+  // Sort players based on their scores (descending order)
+  return players.value.sort((a, b) => (scores.value[b] || 0) - (scores.value[a] || 0));
+})
+
+watch(phase, (newValue, oldValue) => {
+  if (newValue != oldValue && (newValue.localeCompare("guessing") == 0)) {
+    // Refresh the window
+    window.location.reload();
+  }
+});
 
 const { x, y } = useMouse()
 type Pin = {
@@ -200,17 +244,24 @@ type Pin = {
   y: number,
 }
 
-const pins: Ref<Pin[]> = ref([]) // Store pins with lat/long coordinates
+const pins: Ref<ComputedRef<Pin>[]> = ref([]) // Store pins with lat/long coordinates
+const rect = ref(document.querySelector('.map-container')?.getBoundingClientRect() || {left: 0, top: 0})
+
+window.addEventListener('resize', () => {
+  const oldRect = rect.value
+  rect.value = document.querySelector('.map-container')?.getBoundingClientRect() || { left: 0, top: 0 };
+  // Recalculate positions of pins
+  pins.value.forEach(pin => {
+    const offsetX = pin.value.x - oldRect.left;
+    const offsetY = pin.value.y - oldRect.top;
+    pin.value.x = offsetX + rect.value.left;
+    pin.value.y = offsetY + rect.value.top;
+  });
+});
 
 const dropPin = () => {
-  console.log("Trying to find rect...")
-  const rect = document.querySelector('.map-container')?.getBoundingClientRect() // Get the bounding rect of the map container
-  if (!rect) return
-
-  console.log("found rect")
-
-  const offsetX = x.value - rect.left;
-  const offsetY = y.value - rect.top;
+  const offsetX = x.value - rect?.value.left
+  const offsetY = y.value - rect?.value.top
 
   // Convert coordinates to latitude and longitude based on map dimensions
   // This logic may vary depending on the specifics of your map image
@@ -218,17 +269,20 @@ const dropPin = () => {
   const long = offsetX
 
   // Add pin to pins array
-  const existingPinIndex = pins.value.findIndex(pin => pin.player === username.value);
+  const existingPinIndex = pins.value.findIndex(pin => pin.value.player === username.value);
   if (existingPinIndex !== -1) {
-    // Update existing pin
-    pins.value[existingPinIndex].lat = lat;
-    pins.value[existingPinIndex].long = long;
-    pins.value[existingPinIndex].x = offsetX;
-    pins.value[existingPinIndex].y = offsetY;
-  } else {
-    // Add new pin
-    pins.value.push({ player: username.value, lat, long, x: offsetX, y: offsetY });
+    pins.value.splice(existingPinIndex, 1)
   }
+  const newPin = computed( () => {
+    return {
+      player: username.value,
+      lat: lat,
+      long: long,
+      x: offsetX + rect.value.left,
+      y: offsetY + rect.value.top,
+    }
+  })
+  pins.value.push(newPin)
 
   // Optionally, emit an event or perform other actions
 }
@@ -253,18 +307,17 @@ socket.on("gamestate", (state: GameState) => {
   gameState.value = state
 })
 
-socket.on("players", (playerArray: string[], playerScores: { [key: string]: number }) => {
-  players.value = playerArray
-  scores.value = playerScores
+socket.on("new-round", () => {
+  console.log("New Round Received")
+  currentGuess.value = undefined
 })
 
-const newGame = () => {
-  socket.emit("new-game")
+const setGuess = (guess: Coordinates | string | undefined) => {
+  currentGuess.value = guess
 }
 
-const guess = (coords: Coordinates) => {
-  currentGuess.value = coords
-  socket.emit("guess", coords)
+const guess = () => {
+  socket.emit("guess", currentGuess.value)
 }
 
 </script>

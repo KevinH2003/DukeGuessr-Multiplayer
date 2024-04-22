@@ -14,7 +14,8 @@ const locations: Location[] = [
             lat: 1,
             long: 1,
             elev: 1,
-        }
+        },
+        name: "East Campus Lawn"
     },
     {
         _id: 2,
@@ -24,7 +25,8 @@ const locations: Location[] = [
             lat: 2,
             long: 2,
             elev: 2,
-        }
+        },
+        name: "Gardens Bridge"
     },
     {
         _id: 3,
@@ -34,7 +36,8 @@ const locations: Location[] = [
             lat: 3,
             long: 3,
             elev: 3,
-        }
+        },
+        name: "West Campus Lawn"
     },
 ]
 

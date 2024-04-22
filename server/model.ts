@@ -30,7 +30,8 @@ export type Coordinates = {
 
 export type Guess = {
     timeSubmitted: Time
-    coords: Coordinates
+    coords?: Coordinates
+    name?: string
 }
 
 //export type GuessInProgress = Guess | null
@@ -51,6 +52,7 @@ export interface StrippedLocation {
 export interface Location extends StrippedLocation {
     coords: Coordinates
     eligibleModes: Mode[]
+    name?: string
 }
 
 export interface GameSetup {
@@ -72,8 +74,37 @@ export interface GameState extends GameSetup{
     currTime: Time
 }
 
+export function scorePlayers(state: GameState): PlayerScores {
+    const { players, playerScores, playerGuesses } = state;
+    const currentLocationName = state.locations[state.round].name;
+    for (const player of players) {
+        const guess = playerGuesses[player];
+        if (guess?.name.localeCompare(currentLocationName) == 0) {
+            // Sort guesses by timeSubmitted in ascending order
+            const sortedGuesses = Object.entries(playerGuesses)
+                .filter(([_, g]) => g.name === currentLocationName) // Only consider guesses for the current location
+                .sort((a, b) => a[1].timeSubmitted - b[1].timeSubmitted);
+
+            // Find the index of the current player's guess in the sorted list
+            const index = sortedGuesses.findIndex(([key]) => key === player);
+
+            // Award points based on the position in the sorted list (earlier guesses get more points)
+            const points = index >= 0 ? sortedGuesses.length - index : 0;
+
+            // Update player's score
+            playerScores[player] = (playerScores[player] || 0) + points;
+        } else {
+            // If guess doesn't match the location name, assign 0 points
+            playerScores[player] = playerScores[player] || 0;
+        }
+    }
+
+    return playerScores
+}
+
+/*
 export function determineWinner(state: GameState): Player | undefined {
-    const { players, playerScores } = state;
+    const { players, playerScores } = state
 
     // find the key of the maximum score
     const maxScoreKey = Object.keys(playerScores).reduce((maxKey, key) => {
@@ -86,7 +117,7 @@ export function determineWinner(state: GameState): Player | undefined {
 
     // return the player corresponding to the key of the maximum score
     return players.find(player => player === maxScoreKey);
-}
+}*/
 
 export function createEmptyGame(params: GameSetup, locations: Location[]): GameState {
     const emptyGame: GameState = {

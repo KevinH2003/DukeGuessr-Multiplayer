@@ -49,6 +49,7 @@ export interface StrippedLocation {
 export interface Location extends StrippedLocation {
     coords: Coordinates
     eligibleModes: Mode[]
+    name?: string
 }
 
 export interface GameSetup {

@@ -32,3 +32,5 @@ spec:
           value: "7776"
         - name: HOST
           value: "localhost"
+        - name: DISABLE_SECURITY
+          value: security-disabled

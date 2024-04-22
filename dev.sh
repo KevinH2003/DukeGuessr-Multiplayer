@@ -35,12 +35,15 @@ fi
 
 # Start server
 cd server
-DISABLE_SECURITY=security-disabled npm start &
+DISABLE_SECURITY=security-disabled SERVER_PORT=7776 npm start &
+
+DISABLE_SECURITY=security-disabled SERVER_PORT=7778 npm start &
 
 sleep 3
 
 # Start UI
 cd ../ui
-npm run dev
+SERVER_PORT=7776 UI_PORT=7775 npm run dev &
+SERVER_PORT=7778 UI_PORT=7777 npm run dev 
 
 stop_servers

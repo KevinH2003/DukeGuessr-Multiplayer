@@ -52,3 +52,4 @@ http://localhost:7775/api/login-callback
 http://127.0.0.1:7775/api/login-callback
 
 http://localhost:7775/api/login?key=security-disabled&name=Tester1&preferred_username=tester1
+http://localhost:31775/api/login?key=security-disabled&name=Tester1&preferred_username=tester1

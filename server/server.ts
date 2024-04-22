@@ -12,7 +12,7 @@ import { Strategy as CustomStrategy } from "passport-custom"
 import { gitlab } from "./secrets"
 import { setupMongo } from "./gamestate-mongo"
 import { setupRedis } from "./redis"
-import { Location, Guess, createEmptyGame, GameSetup, GameState, Coordinates, User, MODES } from "./model"
+import { Location, Guess, createEmptyGame, GameSetup, GameState, Coordinates, User, scorePlayers, MODES } from "./model"
 import { validateRequestBody } from "./utils"
 import { emit } from "process"
 
@@ -44,8 +44,8 @@ const app = express()
 const server = createServer(app)
 const { db, gamesCollection, getGameState, tryToUpdateGameState, newGame } = await setupMongo()
 const { socketIoAdapter: adapter } = await setupRedis()
-//const io = new Server(server, { adapter })
-const io = new Server(server)
+const io = new Server(server, { adapter })
+//const io = new Server(server)
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
@@ -124,6 +124,12 @@ io.on('connection', client => {
     return
   }
 
+  async function emitNewRound(id: string) {
+    emitGameState(id)
+    logger.info(`Emitting New Round to ${id}`)
+    io.to(id).emit("new-round")
+  }
+
   async function emitGameState(id: string) {
     let state = await getGameState(id)
     logger.info(`Emitting GameState to ${id}`)
@@ -162,17 +168,31 @@ io.on('connection', client => {
     await emitGameState(gameId)
   })
 
-  client.on("guess", async (coords: Coordinates) => {
+  client.on("guess", async (guess: Coordinates | string) => {
     const state = await getGameState(gameId)
-    logger.info("Guess received: ", coords)
-    //Should eventually do time handling stuff here, for now just put it as 0
-    state.playerGuesses[username] = {coords, timeSubmitted: 0} as Guess
-    if (await tryToUpdateGameState(gameId, {...state})){
-      emitGameState(gameId)
-    } else{
-      //Error handling
-    }
+    logger.info("Guess received: " + JSON.stringify(guess) + " from " + JSON.stringify(username))
+    //Should eventually do time handling stuff here, for now just put it as the version
+    state.playerGuesses[username] = {name: guess, timeSubmitted: state.version} as Guess
 
+    //If all players have guessed, proceed to scoring
+    if (Object.keys(state.playerGuesses).length == state.players.length) {
+      const newScores = scorePlayers(state)
+      state.playerScores = newScores
+      state.playerGuesses = {}
+      state.round += 1
+
+      if (state.round >= state.numRounds) {
+        state.phase = "game-over"
+      }
+
+      if (await tryToUpdateGameState(gameId, {...state})){
+        emitNewRound(gameId)
+      }
+    } else {
+      if (await tryToUpdateGameState(gameId, {...state})){
+        emitGameState(gameId)
+      }
+    }
   })
 
 })
