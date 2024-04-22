@@ -116,7 +116,7 @@ io.engine.on("connection_error", (err) => {
 
 io.on('connection', client => {
   const user = (client.request as any).session?.passport?.user
-  logger.info("New socket connection for user: " + JSON.stringify(user.preferred_username))
+  logger.info("New socket connection for user: " + JSON.stringify(user?.preferred_username))
   
   if (!user) {
     logger.info("Disconnected: User Not Authenticated")
@@ -271,6 +271,13 @@ app.put("/api/game/:gameId?", checkAuthenticated, async (req, res) => {
   }
   
   const gameParams = req.body
+
+  if (typeof(gameParams.numRounds) == "string"){
+    gameParams.num_rounds = parseInt(gameParams.num_rounds)
+  }
+  if (typeof(gameParams.numPlayers) == "string"){
+    gameParams.numPlayers = parseInt(gameParams.numPlayers)
+  }
   
   logger.info("Creating New Game: " + JSON.stringify(gameParams))
   const newGameId: string = await newGame(gameParams, req.params.gameId)

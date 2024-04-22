@@ -123,6 +123,10 @@ async function getGamemodes() {
 }
 
 async function newGame() {
+  if (typeof(numRounds.value) == "string"){
+    numRounds.value = parseInt(numRounds.value)
+  }
+
   if (!user?.value?.preferred_username){
     console.log("Not logged in, redirecting to login screen...")
     window.location.href = `/api/login`
