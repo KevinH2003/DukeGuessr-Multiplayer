@@ -42,8 +42,9 @@ export async function setupMongo() {
 			let result: InsertOneResult<Document>
 			// Get locations from locations collection
 			const locations: Location[] = await db.collection("locations").aggregate([
-				{ $sample: { size: params.numRounds } }
-				]).toArray() as any as Location[];
+				{ $match: { eligibleModes: params.mode } }, // Filter locations by eligible modes
+				{ $sample: { size: params.numRounds } } // Random sampling
+			]).toArray() as any as Location[];
 		  
 			// Check if not enough locations available
 			if (locations.length < params.numRounds) {

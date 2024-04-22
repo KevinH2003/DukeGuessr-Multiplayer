@@ -9,9 +9,11 @@
           <div class="image-container">
             <b-img :src="gameState?.locations[round].imageUrl" thumbnail rounded alt="Location 1"></b-img>
           </div>
+        <!--
           <div class="image-container map-container">
             <b-img :src="gameState?.locations[1].imageUrl" thumbnail rounded alt="Location 2" @click="dropPin()"></b-img>
           </div>
+        -->
         </div>
         <b-row class="button-row">
           <b-col v-for="(input, index) in inputs" :key="index" class="button-container">
@@ -22,7 +24,9 @@
           <!-- Optionally display pin details -->
           <span>{{ pin.value.lat }}, {{ pin.value.long }}</span>
         </div>
-        <div class="game-state">{{ JSON.stringify(gameState) }}</div>
+        <!--
+          <div class="game-state">{{ JSON.stringify(gameState) }}</div>
+        -->
         <b-button @click="guess" variant="primary" class="submit-button">Submit Guess!</b-button>
       </div>
       <div v-else>
@@ -85,12 +89,13 @@
 
 .image-wrapper {
   display: flex;
-  max-height: 100%;
   justify-content: center;
   margin: 10px;
 }
 
 .image-container {
+  max-height: 70vh;
+  max-width: 50vw;
   flex: 1; /* Allow image containers to grow and shrink */
   margin: 10px;
   overflow: hidden; /* Prevent image from overflowing container */
@@ -141,11 +146,13 @@
   }
 }
 
+/*
 @media (max-width: 768px) {
   .image-wrapper {
     flex-direction: column;
   }
 }
+*/
 
 @keyframes fadeInUp {
   from {
@@ -198,10 +205,12 @@
 </style>
 
 <script setup lang="ts">
-import { ref, Ref, computed, ComputedRef, inject, watch, } from 'vue'
+//import { ref, Ref, computed, ComputedRef, inject, watch, } from 'vue'
+import { ref, Ref, computed, ComputedRef, watch, } from 'vue'
 import { io } from 'socket.io-client'
-import { useMouse } from '@vueuse/core'
-import { GameState, User, Coordinates, Player, Location, PlayerScores } from '../model'
+//import { useMouse } from '@vueuse/core'
+//import { GameState, User, Coordinates, Player, Location, PlayerScores } from '../model'
+import { GameState, Coordinates, Player, Location, PlayerScores } from '../model'
 import Home from './Home.vue'
 
 interface Props {
@@ -212,16 +221,33 @@ const props = withDefaults(defineProps<Props>(), {
   gameId: "",
 })
 
-const user:Ref<User> | undefined = inject("user")
-const username: ComputedRef<string> = computed( () => user?.value.preferred_username || "None")
+//const user:Ref<User> | undefined = inject("user")
+//const username: ComputedRef<string> = computed( () => user?.value.preferred_username || "None")
 const currentGuess: Ref<Coordinates | string | undefined> = ref()
 
 const gameState: Ref<GameState | null> = ref(null)
 const players: ComputedRef<string[]> = computed( () => gameState.value?.players || [])
 const scores: ComputedRef<PlayerScores> = computed( () => gameState.value?.playerScores || {})
-const inputs: ComputedRef<Location[]> = computed( () => gameState.value?.locations || [])
+const locations: ComputedRef<Location[]> = computed( () => gameState.value?.locations || [])
 const round: ComputedRef<number> = computed( () => gameState.value?.round || 0)
 const phase: ComputedRef<string> = computed ( () => gameState.value?.phase || "guessing")
+
+  const inputs: ComputedRef<Location[]> = computed(() => {
+  const allLocations = locations.value || [];
+  const currentRoundLocation = allLocations[round.value];
+
+  // Get 3 random locations (excluding the current round location)
+  const randomLocations = allLocations
+    .filter(location => location !== currentRoundLocation)
+    .sort(() => Math.random() - 0.5) // Shuffle the locations
+    .slice(0, 3); // Take the first 3 random locations
+
+  // Add the current round location to the random locations
+  const combinedLocations = [currentRoundLocation, ...randomLocations];
+
+  // Shuffle the combined locations again to ensure randomness
+  return combinedLocations.sort(() => Math.random() - 0.5);
+});
 
 const sortedPlayers = computed(() => {
   // Sort players based on their scores (descending order)
@@ -235,7 +261,7 @@ watch(phase, (newValue, oldValue) => {
   }
 });
 
-const { x, y } = useMouse()
+//const { x, y } = useMouse()
 type Pin = {
   player: Player,
   lat: number,
@@ -258,7 +284,7 @@ window.addEventListener('resize', () => {
     pin.value.y = offsetY + rect.value.top;
   });
 });
-
+/*
 const dropPin = () => {
   const offsetX = x.value - rect?.value.left
   const offsetY = y.value - rect?.value.top
@@ -286,6 +312,7 @@ const dropPin = () => {
 
   // Optionally, emit an event or perform other actions
 }
+*/
 const socket = io({ transports: ["websocket"]})
 
 console.log("Game:", JSON.stringify(props.gameId))
