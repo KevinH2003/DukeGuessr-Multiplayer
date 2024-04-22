@@ -13,10 +13,12 @@
     <label for="numPlayers">Number of Players: {{ numPlayers }}</label>
     <input type="range" id="numPlayers" :min="1" :max="20" v-model="numPlayers" class="form-control">
   </div>
+  
   <div class="form-group">
     <label for="playerNames">Player Names (Separate With Commas):</label>
     <b-form-input id="playerNames" v-model="playerNames" placeholder="Enter player names" class="form-control"></b-form-input>
   </div>
+  
   <div class="form-group">
     <label for="gameId">Game ID (Leave Blank For Random):</label>
     <b-form-input id="gameId" v-model="gameId" placeholder="" class="form-control"></b-form-input>
@@ -126,6 +128,10 @@ async function newGame() {
   if (typeof(numRounds.value) == "string"){
     numRounds.value = parseInt(numRounds.value)
   }
+  let scrubbedPlayers = players.value
+  if (players.value.includes("")){
+    scrubbedPlayers = []
+  }
 
   if (!user?.value?.preferred_username){
     console.log("Not logged in, redirecting to login screen...")
@@ -144,7 +150,7 @@ async function newGame() {
             },
             method: "PUT",
             body: JSON.stringify({
-                players: players.value,
+                players: scrubbedPlayers,
                 mode: gamemode.value,
                 numRounds: numRounds.value,
                 numPlayers: numPlayers.value,

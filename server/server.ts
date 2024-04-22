@@ -13,7 +13,7 @@ import { gitlab } from "./secrets"
 import { setupMongo } from "./gamestate-mongo"
 import { setupRedis } from "./redis"
 import { Location, Guess, createEmptyGame, GameSetup, GameState, Coordinates, User, scorePlayers, MODES } from "./model"
-import { validateRequestBody } from "./utils"
+import { getRandomLocationInputs, validateRequestBody } from "./utils"
 import { emit } from "process"
 
 declare module 'express-session' {
@@ -161,7 +161,7 @@ io.on('connection', client => {
       await newGame(defaultGameSetup, gameId)
       game = await getGameState(gameId)
     }
-    if (!game.players.includes(username)){
+    if (!game.players.includes(username) && game.numPlayers > game.players.length){
       game.players.push(username)
     }
     await tryToUpdateGameState(gameId, game)
@@ -170,6 +170,14 @@ io.on('connection', client => {
 
   client.on("guess", async (guess: Coordinates | string) => {
     const state = await getGameState(gameId)
+    if (!state.players.includes(username)){
+      logger.info("Player " + JSON.stringify(username) + " not allowed to guess")
+      return
+    }
+    if (!guess){
+      logger.info("Guess from " + JSON.stringify(username) + " was null")
+      return
+    }
     logger.info("Guess received: " + JSON.stringify(guess) + " from " + JSON.stringify(username))
     //Should eventually do time handling stuff here, for now just put it as the version
     state.playerGuesses[username] = {name: guess, timeSubmitted: state.version} as Guess
@@ -184,6 +192,8 @@ io.on('connection', client => {
       if (state.round >= state.numRounds) {
         state.phase = "game-over"
       }
+
+      state.inputs = getRandomLocationInputs(state.locations, state.round, 4)
 
       if (await tryToUpdateGameState(gameId, {...state})){
         emitNewRound(gameId)

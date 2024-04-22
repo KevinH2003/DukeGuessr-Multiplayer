@@ -1,5 +1,6 @@
 import { MongoClient, ObjectId, InsertOneResult } from "mongodb"
 import { Location, GameSetup, GameState, createEmptyGame} from "./model"
+import { getRandomLocationInputs } from "./utils"
 
 const DB = "DukeGuessrDB"
 const GAMES_COLLECTION = "games"
@@ -45,12 +46,15 @@ export async function setupMongo() {
 				{ $match: { eligibleModes: params.mode } }, // Filter locations by eligible modes
 				{ $sample: { size: params.numRounds } } // Random sampling
 			]).toArray() as any as Location[];
-		  
+
+			const inputs = getRandomLocationInputs(locations, 0, 4)
+
 			// Check if not enough locations available
 			if (locations.length < params.numRounds) {
 			  	console.log(`Not enough locations to support ${params.numRounds} rounds, setting num_rounds to max number of locations (${locations.length})`)
 			  	params.numRounds = locations.length
 			}
+			const emptyGame = createEmptyGame(params, locations, inputs)
 
 			if (typeof(gameId) == "string"){
 				const _id = ObjectId.createFromHexString(gameId)
@@ -59,18 +63,18 @@ export async function setupMongo() {
             	if (existingGame && (existingGame?.phase.localeCompare("game-over") == 0)) {
             	    // If the game exists, update it with the new game state
             	    await gamesCollection.updateOne({ _id: _id }, {
-            	        $set: { ...createEmptyGame(params, locations) }
+            	        $set: { ...emptyGame }
             	    });
             	    return gameId; // Return the _id of the existing game
             	} else if (!existingGame){
-					result = await gamesCollection.insertOne({_id: ObjectId.createFromHexString(gameId), version: 0, ...createEmptyGame(params, locations)})
+					result = await gamesCollection.insertOne({_id: ObjectId.createFromHexString(gameId), version: 0, ...emptyGame})
 					return String(result.insertedId)
 				} else{
 					console.log("Game Already Exists and In Progress, Setting Random ID")
 				}
 			}
 
-			result = await gamesCollection.insertOne({_id: new ObjectId(), version: 0, ...createEmptyGame(params, locations)})
+			result = await gamesCollection.insertOne({_id: new ObjectId(), version: 0, ...emptyGame})
 			return String(result.insertedId)
 		}
 	}

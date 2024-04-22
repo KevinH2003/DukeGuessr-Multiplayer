@@ -72,6 +72,7 @@ export interface GameState extends GameSetup{
     phase: Phase
     roundStart: Time
     currTime: Time
+    inputs?: Location[]
 }
 
 export function scorePlayers(state: GameState): PlayerScores {
@@ -119,9 +120,9 @@ export function determineWinner(state: GameState): Player | undefined {
     return players.find(player => player === maxScoreKey);
 }*/
 
-export function createEmptyGame(params: GameSetup, locations: Location[]): GameState {
+export function createEmptyGame(params: GameSetup, locations: Location[], inputs?: Location[]): GameState {
     const emptyGame: GameState = {
-        players: [],
+        players: params.players || [],
         mode: params.mode,
         locations: locations,
         numRounds: params.numRounds,
@@ -133,6 +134,7 @@ export function createEmptyGame(params: GameSetup, locations: Location[]): GameS
         phase: "guessing", // Initial phase is guessing
         roundStart: 0, 
         currTime: 0,
+        inputs: inputs,
     }
     return emptyGame
 }

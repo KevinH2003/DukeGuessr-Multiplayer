@@ -53,3 +53,19 @@ http://127.0.0.1:7775/api/login-callback
 
 http://localhost:7775/api/login?key=security-disabled&name=Tester1&preferred_username=tester1
 http://localhost:31775/api/login?key=security-disabled&name=Tester1&preferred_username=tester1
+http://localhost:31775/api/login?key=security-disabled&name=Tester2&preferred_username=tester2
+
+http://localhost:7777/api/login?key=security-disabled&name=Tester1&preferred_username=tester1
+
+INDEX=1 URL=http://localhost:31775 npm start
+
+curl -X PUT \
+  http://localhost:7775/api/game/17 \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer your_access_token' \
+  -d '{
+    "players": ["player1", "player2", "player3"],
+    "mode": "east",
+    "numRounds": 1,
+    "numPlayers": 3
+}'

@@ -28,7 +28,8 @@ export type Coordinates = {
 
 export type Guess = {
     timeSubmitted: Time
-    coords: Coordinates
+    coords?: Coordinates
+    name?: string
 }
 
 //export type GuessInProgress = Guess | null
@@ -69,10 +70,12 @@ export interface GameState extends GameSetup{
     phase: Phase
     roundStart: Time
     currTime: Time
+    inputs?: Location[]
 }
 
+/*
 export function determineWinner(state: GameState): Player | undefined {
-    const { players, playerScores } = state;
+    const { players, playerScores } = state
 
     // find the key of the maximum score
     const maxScoreKey = Object.keys(playerScores).reduce((maxKey, key) => {
@@ -85,11 +88,11 @@ export function determineWinner(state: GameState): Player | undefined {
 
     // return the player corresponding to the key of the maximum score
     return players.find(player => player === maxScoreKey);
-}
+}*/
 
 export function createEmptyGame(params: GameSetup, locations: Location[]): GameState {
     const emptyGame: GameState = {
-        players: [],
+        players: params.players || [],
         mode: params.mode,
         locations: locations,
         numRounds: params.numRounds,
@@ -101,6 +104,7 @@ export function createEmptyGame(params: GameSetup, locations: Location[]): GameS
         phase: "guessing", // Initial phase is guessing
         roundStart: 0, 
         currTime: 0,
+        inputs: [],
     }
     return emptyGame
 }

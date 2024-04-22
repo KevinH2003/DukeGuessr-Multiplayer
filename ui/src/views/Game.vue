@@ -231,23 +231,7 @@ const scores: ComputedRef<PlayerScores> = computed( () => gameState.value?.playe
 const locations: ComputedRef<Location[]> = computed( () => gameState.value?.locations || [])
 const round: ComputedRef<number> = computed( () => gameState.value?.round || 0)
 const phase: ComputedRef<string> = computed ( () => gameState.value?.phase || "guessing")
-
-  const inputs: ComputedRef<Location[]> = computed(() => {
-  const allLocations = locations.value || [];
-  const currentRoundLocation = allLocations[round.value];
-
-  // Get 3 random locations (excluding the current round location)
-  const randomLocations = allLocations
-    .filter(location => location !== currentRoundLocation)
-    .sort(() => Math.random() - 0.5) // Shuffle the locations
-    .slice(0, 3); // Take the first 3 random locations
-
-  // Add the current round location to the random locations
-  const combinedLocations = [currentRoundLocation, ...randomLocations];
-
-  // Shuffle the combined locations again to ensure randomness
-  return combinedLocations.sort(() => Math.random() - 0.5);
-});
+const inputs: ComputedRef<Location[]> = computed( () => gameState.value?.inputs || [])
 
 const sortedPlayers = computed(() => {
   // Sort players based on their scores (descending order)

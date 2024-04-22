@@ -84,18 +84,7 @@ const locations: Location[] = [
         name: "Penn Pavillion"
     },
     {
-        _id: 7,
-        imageUrl: 'https://dukeguessrbucket.s3.amazonaws.com/IMG_1906.JPG',
-        eligibleModes: ['all', 'west'],
-        coords: {
-            lat: 3,
-            long: 3,
-            elev: 3,
-        },
-        name: "Penn Pavillion"
-    },
-    {
-        _id: 8,
+        _id: 9,
         imageUrl: 'https://dukeguessrbucket.s3.amazonaws.com/IMG_4420.jpg',
         eligibleModes: ['all', 'west'],
         coords: {
@@ -106,7 +95,7 @@ const locations: Location[] = [
         name: "Crowell Quad"
     },
     {
-        _id: 8,
+        _id: 10,
         imageUrl: 'https://dukeguessrbucket.s3.amazonaws.com/IMG_4420.jpg',
         eligibleModes: ['all', 'west'],
         coords: {
@@ -117,7 +106,7 @@ const locations: Location[] = [
         name: "Crowell Quad"
     },
     {
-        _id: 8,
+        _id: 11,
         imageUrl: 'https://dukeguessrbucket.s3.amazonaws.com/IMG_2273.jpg',
         eligibleModes: ['all', 'west'],
         coords: {
