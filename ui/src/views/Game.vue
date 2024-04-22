@@ -45,6 +45,7 @@
             :numRounds="gameState?.numRounds" 
             :gamemode="gameState?.mode"
             :playerNames="players.join(`, `)"
+            style="overflow: scroll"
             >
           </Home>
         </div>
@@ -228,7 +229,7 @@ const currentGuess: Ref<Coordinates | string | undefined> = ref()
 const gameState: Ref<GameState | null> = ref(null)
 const players: ComputedRef<string[]> = computed( () => gameState.value?.players || [])
 const scores: ComputedRef<PlayerScores> = computed( () => gameState.value?.playerScores || {})
-const locations: ComputedRef<Location[]> = computed( () => gameState.value?.locations || [])
+//const locations: ComputedRef<Location[]> = computed( () => gameState.value?.locations || [])
 const round: ComputedRef<number> = computed( () => gameState.value?.round || 0)
 const phase: ComputedRef<string> = computed ( () => gameState.value?.phase || "guessing")
 const inputs: ComputedRef<Location[]> = computed( () => gameState.value?.inputs || [])

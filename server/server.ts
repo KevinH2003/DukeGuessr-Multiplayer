@@ -270,7 +270,7 @@ app.get("/api/user", (req, res) => {
   res.json(req?.user || {})
 })
 
-app.put("/api/game/:gameId?", checkAuthenticated, async (req, res) => {
+app.post("/api/game/:gameId?", checkAuthenticated, async (req, res) => {
   //If no gameId, will generate a random gameId and return it
   const requiredAttributes = ['players', 'mode', 'numRounds', 'numPlayers']
 

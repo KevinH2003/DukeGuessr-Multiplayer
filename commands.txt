@@ -57,10 +57,12 @@ http://localhost:31775/api/login?key=security-disabled&name=Tester2&preferred_us
 
 http://localhost:7777/api/login?key=security-disabled&name=Tester1&preferred_username=tester1
 
+npx playwright test --headed --project=webkit
+
 INDEX=1 URL=http://localhost:31775 npm start
 
 curl -X PUT \
-  http://localhost:7775/api/game/17 \
+  http://localhost:31775/api/game/17 \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer your_access_token' \
   -d '{

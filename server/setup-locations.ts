@@ -95,17 +95,6 @@ const locations: Location[] = [
         name: "Crowell Quad"
     },
     {
-        _id: 10,
-        imageUrl: 'https://dukeguessrbucket.s3.amazonaws.com/IMG_4420.jpg',
-        eligibleModes: ['all', 'west'],
-        coords: {
-            lat: 3,
-            long: 3,
-            elev: 3,
-        },
-        name: "Crowell Quad"
-    },
-    {
         _id: 11,
         imageUrl: 'https://dukeguessrbucket.s3.amazonaws.com/IMG_2273.jpg',
         eligibleModes: ['all', 'west'],

@@ -148,7 +148,7 @@ async function newGame() {
             headers: {
                 "Content-Type": "application/json",
             },
-            method: "PUT",
+            method: "POST",
             body: JSON.stringify({
                 players: scrubbedPlayers,
                 mode: gamemode.value,
